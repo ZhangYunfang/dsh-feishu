@@ -1,0 +1,324 @@
+{
+ "generated": "2026-10-22 10:58:12",
+ "workspace": "/Users/zyf/Project/DSH_WorkSpace/dsh-feishu",
+ "scan_source": "git ls-files（已跟踪 + 未忽略的未跟踪文件）",
+ "excludes": [],
+ "module_depth": 2,
+ "files": {
+  ".gitattributes": {
+   "size": 199,
+   "sha": "0d7061be6c7f962f",
+   "lines": null,
+   "mtime": "2026-10-22 10:57",
+   "kind": "other",
+   "ext": "",
+   "module": "(root)"
+  },
+  ".github/workflows/ci.yml": {
+   "size": 826,
+   "sha": "edf8ffdfbb02786c",
+   "lines": 30,
+   "mtime": "2026-10-22 10:57",
+   "kind": "config",
+   "ext": ".yml",
+   "module": ".github/workflows"
+  },
+  ".gitignore": {
+   "size": 265,
+   "sha": "fba0a6e968046d04",
+   "lines": null,
+   "mtime": "2026-10-22 10:57",
+   "kind": "other",
+   "ext": "",
+   "module": "(root)"
+  },
+  "LICENSE": {
+   "size": 1064,
+   "sha": "24bb0243768c7bf0",
+   "lines": null,
+   "mtime": "2026-10-22 10:57",
+   "kind": "other",
+   "ext": "",
+   "module": "(root)"
+  },
+  "README.md": {
+   "size": 19328,
+   "sha": "fcf0b95e3f7d7ea2",
+   "lines": 415,
+   "mtime": "2026-10-22 10:57",
+   "kind": "doc",
+   "ext": ".md",
+   "module": "(root)"
+  },
+  "README.zh.md": {
+   "size": 14352,
+   "sha": "daefa0e25d0f31f7",
+   "lines": 257,
+   "mtime": "2026-10-22 10:57",
+   "kind": "doc",
+   "ext": ".md",
+   "module": "(root)"
+  },
+  "cordis.patch.yml": {
+   "size": 919,
+   "sha": "ea997a58f03f834c",
+   "lines": 23,
+   "mtime": "2026-10-22 10:57",
+   "kind": "config",
+   "ext": ".yml",
+   "module": "(root)"
+  },
+  "lib/activity.js": {
+   "size": 1290,
+   "sha": "5041a7ef815cb448",
+   "lines": 47,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/activity.js"
+  },
+  "lib/client.js": {
+   "size": 11503,
+   "sha": "bb10957805341fe9",
+   "lines": 304,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/client.js"
+  },
+  "lib/config.js": {
+   "size": 7042,
+   "sha": "15260b504b9dc52d",
+   "lines": 178,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/config.js"
+  },
+  "lib/entry-config.js": {
+   "size": 18891,
+   "sha": "fc1cf718bfc8cd56",
+   "lines": 466,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/entry-config.js"
+  },
+  "lib/errors.js": {
+   "size": 6078,
+   "sha": "ae20c0eb9daa4d10",
+   "lines": 116,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/errors.js"
+  },
+  "lib/http.js": {
+   "size": 5957,
+   "sha": "afceea1be2745f9e",
+   "lines": 149,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/http.js"
+  },
+  "lib/identity.js": {
+   "size": 21673,
+   "sha": "22723f0acab74aca",
+   "lines": 545,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/identity.js"
+  },
+  "lib/index.js": {
+   "size": 6944,
+   "sha": "a9bae70d02b7e5eb",
+   "lines": 173,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/index.js"
+  },
+  "lib/local-file.js": {
+   "size": 3739,
+   "sha": "f71428b5f660b049",
+   "lines": 103,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/local-file.js"
+  },
+  "lib/routes.js": {
+   "size": 23870,
+   "sha": "324bd38d33a847a8",
+   "lines": 555,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/routes.js"
+  },
+  "lib/tools/auth.js": {
+   "size": 8974,
+   "sha": "765193fe5f9126a4",
+   "lines": 186,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/tools"
+  },
+  "lib/tools/bitable.js": {
+   "size": 24287,
+   "sha": "a6f15071b8264f23",
+   "lines": 519,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/tools"
+  },
+  "lib/tools/dashboard.js": {
+   "size": 15631,
+   "sha": "59b934316f3d2ccb",
+   "lines": 299,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/tools"
+  },
+  "lib/tools/docx.js": {
+   "size": 13968,
+   "sha": "9c6bf90920cd2241",
+   "lines": 273,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/tools"
+  },
+  "lib/tools/drive.js": {
+   "size": 9218,
+   "sha": "6c0539e166dc60e8",
+   "lines": 164,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/tools"
+  },
+  "lib/tools/im.js": {
+   "size": 10708,
+   "sha": "bb0c3206a9eaaff3",
+   "lines": 205,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/tools"
+  },
+  "lib/tools/index.js": {
+   "size": 4787,
+   "sha": "53f3b3e1a64e86a2",
+   "lines": 134,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/tools"
+  },
+  "lib/tools/kit.js": {
+   "size": 13129,
+   "sha": "6719ad1c99e23d1a",
+   "lines": 336,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/tools"
+  },
+  "lib/tools/query.js": {
+   "size": 11521,
+   "sha": "2487ee2251eaf20b",
+   "lines": 234,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/tools"
+  },
+  "lib/tools/raw.js": {
+   "size": 3319,
+   "sha": "80a6039489f745d5",
+   "lines": 74,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/tools"
+  },
+  "lib/tools/sheet.js": {
+   "size": 8813,
+   "sha": "943b42b445799e0b",
+   "lines": 174,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/tools"
+  },
+  "lib/tools/wiki.js": {
+   "size": 8046,
+   "sha": "f3a16bc9b8baa8a4",
+   "lines": 141,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/tools"
+  },
+  "lib/ui/client.js": {
+   "size": 38794,
+   "sha": "9c5d4b948a37e911",
+   "lines": 762,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".js",
+   "module": "lib/ui"
+  },
+  "package.json": {
+   "size": 1523,
+   "sha": "e27b2e4c38717c6e",
+   "lines": 66,
+   "mtime": "2026-10-22 10:57",
+   "kind": "config",
+   "ext": ".json",
+   "module": "(root)"
+  },
+  "scripts/install.ps1": {
+   "size": 5729,
+   "sha": "d72f1f2b868ce51f",
+   "lines": 148,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".ps1",
+   "module": "scripts/install.ps1"
+  },
+  "scripts/uninstall.ps1": {
+   "size": 3458,
+   "sha": "0e0bf124e30c8ed9",
+   "lines": 99,
+   "mtime": "2026-10-22 10:57",
+   "kind": "code",
+   "ext": ".ps1",
+   "module": "scripts/uninstall.ps1"
+  },
+  "skill/SKILL.md": {
+   "size": 8836,
+   "sha": "0d20b4a2745fba7a",
+   "lines": 227,
+   "mtime": "2026-10-22 10:57",
+   "kind": "doc",
+   "ext": ".md",
+   "module": "skill/SKILL.md"
+  },
+  "test/run-tests.mjs": {
+   "size": 97030,
+   "sha": "5dd0293440d1b6d4",
+   "lines": null,
+   "mtime": "2026-10-22 10:57",
+   "kind": "test",
+   "ext": ".mjs",
+   "module": "test/run-tests.mjs"
+  }
+ }
+}
