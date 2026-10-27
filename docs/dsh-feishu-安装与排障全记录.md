@@ -21,24 +21,29 @@
 
 ## 一、结论速览
 
-**`dsh-feishu` 本身与 DSH 0.1.2-alpha.2 没有 API 不兼容**。当初「装了但用不了」是四类非插件原因叠加：
+**`dsh-feishu` 本身与 DSH 0.1.2-alpha.2 没有 API 不兼容**。当初「装了但用不了」是六类非插件原因叠加，另有两个插件侧的缺陷：
 
 | # | 问题 | 层次 |
 |---|---|---|
 | 1 | profile 内失效的 `file:` 依赖导致**任何**插件都装不上 | 依赖解析 |
 | 2 | App Secret 没有落地的存放位置 | 配置 |
-| 3 | 工具输出含 `undefined`，被 DSH 无损 JSON 校验拒绝 | **代码（唯一真实适配点）** |
+| 3 | 工具输出含 `undefined`，被 DSH 无损 JSON 校验拒绝 | **代码（已修，`d2767b2`）** |
 | 4 | `cordis.patch.yml` 缩进错误，`appId` 没生效 | 配置 |
 | 5 | 本地鉴权插件 `SameSite=Strict` 导致 OAuth 回调死循环 | 第三方插件 |
+| 6 | 飞书权限分「应用 / 用户」两层，后台开权限后用户 grant 不自动扩 | 概念 |
+| 7 | 设置页报「配置文件不可写」：`patchFilePath` 未配，`link:` 安装时定位不到 profile 的 patch 文件 | 配置 |
+| 8 | 自动续期后 refresh token 丢失（`lib/identity.js` 的连坐守卫） | **代码（未修，见 §六 风险 5）** |
 
-最终状态（实测）：
+当前状态（实测，2026-10-27）：
 
 ```
-user.refreshable     : true
+user.authorized      : true
 user.scope           : auth:user.id:read bitable:app contact:user.base:readonly
                        docx:document drive:drive im:message im:resource
-                       offline_access sheets:spreadsheet wiki:wiki
+                       sheets:spreadsheet wiki:wiki        ← offline_access 已因缺陷 8 丢失
+user.refreshable     : false        ← 缺陷 8 的直接后果，约 2 小时后需重新授权
 feishu_drive(用户身份) : found 38 item(s) in the drive root
+配置可写             : patch.file = /Users/zyf/.dsh/profiles/web/cordis.patch.yml（坑 7 已修）
 ```
 
 ---
@@ -105,7 +110,7 @@ pnpm dsh plugin --profile web add /Users/zyf/Project/DSH_WorkSpace/dsh-feishu
 grep -n "dsh-feishu" ~/.dsh/profiles/web/package.json
 ```
 
-**B2 · 写入 appId**
+**B2 · 写入 appId 与 patchFilePath**
 
 编辑 `~/.dsh/profiles/web/cordis.patch.yml`，**末尾追加顶层条目**（注意必须是**顶层**，缩进 0）：
 
@@ -113,10 +118,13 @@ grep -n "dsh-feishu" ~/.dsh/profiles/web/package.json
 - id: feishu
   config:
     appId: 'cli_你的AppID'
+    patchFilePath: '/Users/<你>/.dsh/profiles/web/cordis.patch.yml'
 ```
 
 > 机制：插件自带的 bundle patch 已经 `insert` 了 `id: feishu` 的行（`appId` 为空串），此处按 `id` 覆盖它的 `config`。
 > 参考 `cordis.patch.yml` 里的 `- insert:` 列表——**不要**把 feishu 行写进那个列表里（那会变成第二个插入行）。
+>
+> 🔴 **`patchFilePath` 不能省**：它决定设置页把改动写回哪个文件。`link:` 安装时插件无法自动定位 profile 的 patch 文件，不配它设置页会报「配置文件不可写」，详见 §三 坑 7。
 
 **B3 · 写入 App Secret（推荐走凭据库）**
 
@@ -197,7 +205,7 @@ feishu_auth(action: "authorize_url", scopes: ["offline_access", "bitable:app", .
 
 ---
 
-## 三、问题与解法（5 个坑）
+## 三、问题与解法（7 个坑）
 
 ### 坑 1 · 任何插件都装不上（失效的 `file:` 依赖）
 
@@ -554,6 +562,107 @@ curl -sS -o /dev/null -w '最终URL: %{url_effective}\n重定向次数: %{num_re
 
 ---
 
+### 坑 7 · 设置页报「配置文件不可写」（`patchFilePath` 未配）
+
+**现象**
+
+设置页能打开、19 个字段能渲染出来，但顶部挂一条红字：
+
+```
+配置文件不可写：the profile patch file could not be located.
+Looked in: /Users/zyf/.dsh/profiles/cordis.patch.yml,
+           /Users/zyf/.dsh/cordis.patch.yml,
+           /Users/zyf/cordis.patch.yml,
+           /Users/cordis/cordis.patch.yml
+```
+
+后果不是「不能看」，而是**不能存**：页面上改任何字段都会失败。
+
+**先做的三层排除（这一步比结论更重要）**
+
+现象是「设置里看不到飞书配置」，很容易一头扎进前端代码。实测下来三层都是好的：
+
+| 层 | 检查命令 | 结果 |
+|---|---|---|
+| 后端接口 | `curl -sL -c ck -b ck http://localhost:3080/api/feishu/config` | **HTTP 200**，`values`/`fields`/`effective` 全齐 |
+| 客户端 bundle | 从 `index.html` 的 `__DSH_BOOT__.entries` 取出真实 URL（`/plugins/??dsh-feishu/client.js&rev=…`）再取 | **200 / 38,877 字节**，含 `__ModuleLoader__` |
+| 组件渲染 | 用真实 payload 跑 `FeishuSettingsSection`（复用插件自带的 hook shim） | 不抛错，**渲染出 1113 个节点**，19 字段全在 |
+
+所以问题既不在后端、也不在 bundle、更不在组件——只剩 payload 里的 `patch` 字段：
+
+```json
+"patch": { "file": null, "entryFound": false, "readable": false, "error": "the profile patch file could not be located…" }
+```
+
+**根因：配置文件定位的四个候选全部落空**
+
+`lib/entry-config.js` 的 `patchFileCandidates()` 按顺序给候选，`resolvePatchFile()` 取第一个「形状匹配 + 真实存在」的：
+
+| # | 候选来源 | 本机实际 |
+|---|---|---|
+| 1 | `config.patchFilePath` | 未配置（空串）→ 跳过 |
+| 2 | `$DSH_PROFILE_DIR/cordis.patch.yml` | 环境变量未设 → 跳过 |
+| 3 | `$DSH_HOME/profiles/${DSH_PROFILE \|\| 'desktop'}/cordis.patch.yml` | `DSH_PROFILE` 未设 → **回退到 desktop**，命中错文件 |
+| 4 | **从模块路径向上找 6 层**（`ANCESTOR_DEPTH = 6`） | 见下 |
+
+第 4 条是设计里的兜底：「插件装在 `<profile>/node_modules/dsh-feishu/lib/`，向上必然找到 profile」。但**本项目是 `link:` 安装**，Node 会解析软链到真实路径，`import.meta.url` 落在：
+
+```
+/Users/zyf/Project/DSH_WorkSpace/dsh-feishu/lib/
+```
+
+向上 6 层依次是 `lib → dsh-feishu → DSH_WorkSpace → Project → zyf → Users`，**永远到不了 `~/.dsh/profiles/web/`**。这就是报错里那串「Looked in」的来源。
+
+> 判据：`patch.file === null` 且 `entryFound === false`。不要看界面文字去猜，直接看接口返回的 `patch` 对象。
+
+**解法：显式指定 `patchFilePath`（纯配置，不改代码）**
+
+`patchFilePath` 是候选 #1，优先级最高。它**故意不允许从浏览器写入**（见 README 配置表：`patchFilePath`「不允许从浏览器写入」），防止页面把写目标改到别处，所以只能写在 profile 的 patch 文件里：
+
+```yaml
+# ~/.dsh/profiles/web/cordis.patch.yml 末尾
+- id: feishu
+  config:
+    appId: 'cli_你的AppID'
+    patchFilePath: '/Users/<你>/.dsh/profiles/web/cordis.patch.yml'
+```
+
+**验证（用插件自己的解析器，不靠肉眼）**
+
+```bash
+cd <插件工作副本>
+node --input-type=module -e "
+import { readFileSync } from 'node:fs';
+const B = '<插件工作副本>/lib';
+const { normalizeConfig } = await import(B + '/config.js');
+const ec = await import(B + '/entry-config.js');
+const cfg = normalizeConfig({ appId: 'cli_x', patchFilePath: '/Users/<你>/.dsh/profiles/web/cordis.patch.yml' });
+console.log('形状校验:', ec.isProfilePatchPath(cfg.patchFilePath));   // 必须 true
+const file = ec.resolvePatchFile(cfg, { env: process.env });
+console.log('解析到:', file);                                        // 必须非空
+const entry = ec.readEntry(readFileSync(file, 'utf8'), ec.KNOWN_KEYS);
+console.log('entryFound:', entry.found);                              // 必须 true
+"
+```
+
+实测输出：
+
+```
+形状校验: true
+解析到:   /Users/zyf/.dsh/profiles/web/cordis.patch.yml
+entryFound: true
+```
+
+`patchFilePath` 的路径**必须**匹配 `/profiles/<名>/cordis.patch.yml` 的形状（`isProfilePatchPath` 的正则），否则会被静默丢弃。
+
+**生效方式**：`supervisorctl restart dsh-web`（配置在启动时读入）。重启后设置页顶部就从红字变成 `配置文件：/Users/zyf/.dsh/profiles/web/cordis.patch.yml`。
+
+**为什么不能靠 `DSH_PROFILE` 绕过**
+
+理论上设 `DSH_PROFILE=web` 也能让候选 #3 命中。但 `DSH_PROFILE` 由启动器注入，supervisor 托管时环境极简、不保证存在；而 `patchFilePath` 是插件自己读的配置，**不依赖宿主给什么环境变量**，更稳。换机器重建时同理——`link:` 安装形态不变，这个坑就必犯一次，所以写进安装步骤 B2。
+
+---
+
 ## 四、诊断方法论（可复用）
 
 本次结论全部来自实测，没有一条是读代码猜的。以下方法可直接复用：
@@ -608,6 +717,22 @@ feishu_auth → 能返回 → 插件确实挂载了
 | 系统代理吃掉 `127.0.0.1` | 浏览器 502/转圈，但服务端日志**零请求** | `curl --noproxy '*'` 对照；换 `localhost` 绕开 |
 | `SameSite=Strict` 跨站不回传 | OAuth 回调死循环 | `curl -si` 看 `Set-Cookie` 属性 |
 
+### 7. 「界面没显示」先分层排除，别一头扎进前端
+
+设置页不显示配置时，按三层从下往上打，每层都有**一条可执行的判据**：
+
+| 层 | 判据 | 本机结论 |
+|---|---|---|
+| 后端接口 | `curl -sL -c ck -b ck http://localhost:3080/api/feishu/config` 是否 200 + 有 `values`/`fields` | 200，数据齐全 |
+| 客户端 bundle | 从 `index.html` 里解析 `__DSH_BOOT__.entries` 拿到**真实** URL（`/plugins/??<id>/client.js&rev=…`）再取，看是否 200 且含 `__ModuleLoader__` | 200 / 38,877 字节 |
+| 组件渲染 | 用**真实 payload** 跑组件（复用插件测试里的 hook shim），看是否抛错、渲染出多少节点 | 不抛错，1113 节点 |
+
+三层都过 ⇒ 问题一定在 **payload 的某个字段**，而不是「前端坏了」。本机正是这样落到 `patch.file: null` 上的（坑 7）。
+
+> 两个易错点：
+> ① **别用 `/plugins/<id>/client.js` 直接判死**——真实路由是 `??combo` 形式，裸路径 404 是正常的；
+> ② 页面里的 `__DSH_BOOT__` 是 `globalThis["__DSH_BOOT__"] = {…}`，正则匹配要用**括号配平**（JSON 里也可能出现 `};`），否则解析失败会让你误以为「插件不在启动图里」。
+
 ---
 
 ## 五、当前配置与文件清单
@@ -636,6 +761,7 @@ feishu_auth → 能返回 → 插件确实挂载了
 - id: feishu
   config:
     appId: 'cli_aa6a2c729df89cc3'
+    patchFilePath: '/Users/zyf/.dsh/profiles/web/cordis.patch.yml'   # 坑 7：不配则设置页不可写
 ```
 
 ```
@@ -643,6 +769,8 @@ App Secret  →  ~/.dsh/.credentials.yaml 的 refs.FEISHU_APP_SECRET（0600）
                + supervisor conf 的 environment（0600）
 重定向 URL  →  http://127.0.0.1:3080/api/feishu/oauth/callback
                http://localhost:3080/api/feishu/oauth/callback
+配置文件      →  patchFilePath 指向 ~/.dsh/profiles/web/cordis.patch.yml
+               （设置页写回这个文件；该字段故意不允许从浏览器改）
 ```
 
 ### 磁盘上的其他产物
@@ -690,19 +818,65 @@ supervisorctl restart dsh-web
 
 ### 风险 3 · 令牌过期
 
-`refreshable: true` 表示有 refresh token，插件会自动续期（`lib/identity.js` 的 token 刷新逻辑）。若哪天又需要手动授权，先查 `feishu_auth status` 的 `refreshable` 是否变回 `false`（那意味着 `offline_access` 掉了）。
+`refreshable: true` 表示有 refresh token，插件会自动续期。若哪天又需要手动授权，先查 `feishu_auth status` 的 `refreshable` 是否变回 `false`（那意味着 `offline_access` 掉了）。
 
-### 风险 4 · 未提交的代码改动
+### 风险 4 · 自动续期会把 refresh token 丢掉（已定位，**未修**）
 
-`dsh-feishu/lib/tools/kit.js` 的 `sanitizeToJson()` 是本次唯一的代码级修复，目前未提交。建议：
+这是本次实测发现的**真缺陷**，与坑 7 是两条独立的问题。
 
-```bash
-cd /Users/zyf/Project/DSH_WorkSpace/dsh-feishu
-git add lib/tools/kit.js
-git commit -m "fix: keep tool results lossless JSON (drop undefined properties)"
+**现象**
+
+连续两次 `feishu_auth status`：
+
+```
+第一次：expiresAt 1793112036698  refreshable true   scope 含 offline_access
+第二次：expiresAt 1793112494154  refreshable false  scope 不含 offline_access
 ```
 
-否则下次重新克隆/拉取会丢失这个修复，`feishu_auth status` 会在授权后重新报错。
+`expiresAt` 变了 ⇒ **续期确实跑过一次**；但 `refreshable` 变成 `false` ⇒ 续期后的记录里**没有 refresh token** 了。后果：约 2 小时后必须重新授权。
+
+**根因**
+
+`lib/identity.js:363`：
+
+```js
+const record = userRecordFrom(parsed);              // refreshToken 取 parsed.refresh_token，缺失即 ''
+record.openId = stored.openId;
+record.name = stored.name;
+if (config.appSecret.length > 0 && (record.refreshToken === undefined || record.refreshToken.length === 0)) {
+  record.refreshToken = stored.refreshToken;        // ← 只有 config.appSecret 非空才沿用旧 token
+}
+await storeUserToken(record);
+```
+
+那个 `config.appSecret.length > 0` 守卫是**连坐错误**：它假设「密钥写在 `config.appSecret` 里」才谈得上续期，但续期实际用的是 `appSecret()`——该方法会依次查凭据库、环境变量、config。本机密钥在**凭据库**，`config.appSecret` 为空 ⇒ 守卫不成立 ⇒ 飞书这次没回 `refresh_token` 时，**旧 token 被覆盖成空串**。
+
+> 也就是说：**越是按推荐做法把密钥放凭据库，越会触发这个 bug。**
+
+**正解（待落地）**
+
+响应未带新 token 时**无条件**沿用旧值，不按密钥来源分支：
+
+```js
+if (record.refreshToken.length === 0) {
+  record.refreshToken = stored.refreshToken;
+  record.refreshExpiresAt = stored.refreshExpiresAt;
+}
+```
+
+**判据**：对比前后两次 `feishu_auth status` 的 `expiresAt`（变了=续期跑过）与 `refreshable`（`false`=token 丢了）。修好后应长期保持 `refreshable: true`。
+
+**临时缓解**：发现 `refreshable` 变 `false` 时，重新走一次授权流程即可恢复（`feishu_auth action=authorize_url`）。
+
+### 风险 5 · 代码改动的提交状态
+
+| 修复 | 提交 | 状态 |
+|---|---|---|
+| 无损 JSON 净化（坑 3） | `d2767b2` | ✅ 已提交并推送 |
+| 文档与交接包 | `e89b80e` / `658b279` | ✅ 已提交并推送 |
+| refresh token 连坐守卫（风险 4） | — | ❌ **尚未实现** |
+
+踩坑提醒：坑 3 的修复**必须**留在代码里 —— 丢了它，`feishu_auth status` 会在授权后重新报 `value is not lossless JSON`。改完代码记得跑 `npm test`（期望 `96 passed, 0 failed`）再提交。
 
 ---
 

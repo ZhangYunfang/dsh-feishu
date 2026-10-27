@@ -41,15 +41,17 @@ curl -s http://localhost:3080/api/feishu/status
 
 | 项 | 实测值 |
 |---|---|
-| 分支 / HEAD | `main @ e89b80e` |
+| 分支 / HEAD | `main @ 658b279`（本文件所在提交；最新以 `git log -1` 为准） |
 | 跟踪文件数 | 41 |
 | 未提交改动 | 1 项（`pnpm-lock.yaml`，空 lockfile，故意不提交） |
-| 文档 | `docs/` 下 3 篇 |
+| 文档 | `docs/` 下 3 篇 + 本文件 + `HANDOVER-MEMORY.md` |
 | 自测 | `npm test` → `96 passed, 0 failed` |
 | 宿主挂载实测 | 真实 `cordis@4.0.2` + 真实 `ToolRuntime`/`SystemPrompt`/`WebServer` → 10 工具 / 6 路由 / 无内部错误 |
-| 线上状态 | `GET /api/feishu/status` → 200；`refreshable: true`；用户身份 `feishu_drive list_files` 返回 38 条 |
+| 线上接口 | `GET /api/feishu/status` → 200；`feishu_drive list_files`（用户身份）返回 38 条 |
+| 设置页可写 | `patch.file = /Users/zyf/.dsh/profiles/web/cordis.patch.yml`（坑 7 已修） |
+| 授权续期 | ⚠️ `refreshable: false` —— 自动续期会丢 refresh token（见 §4.3 与主文档 §六 风险 4），约 2 小时后需重新授权 |
 
-**结论**：可用。插件与 DSH `0.1.2-alpha.2` **没有 API 不兼容**。
+**结论**：可用，但续期有已知缺陷。插件与 DSH `0.1.2-alpha.2` **没有 API 不兼容**。
 
 ---
 
@@ -86,6 +88,7 @@ curl -s http://localhost:3080/api/feishu/status
 
 | 项 | 说明 | 影响 |
 |---|---|---|
+| **修 refresh token 连坐守卫** | `lib/identity.js` 续期时用 `config.appSecret.length > 0` 决定是否沿用旧 refresh token；密钥在凭据库时该守卫为假 ⇒ token 被覆盖成空串 ⇒ `refreshable` 变 `false`。详见主文档 §六 风险 4 | 🔴 **日常影响最大**：约 2 小时后必须重新授权 |
 | 重置飞书 App Secret | App Secret 曾以明文出现在排查对话中，已写入会话日志 | 泄密面，建议后台重置后更新两处配置 |
 | 给上游提 issue | `SameSite=Strict` 是通用缺陷（任何第三方 OAuth 回调都会死循环），尚未反馈给 `dsh-web-startup-auth` 作者 | 不修则每个用该插件的机器都要手工打补丁 |
 | 修正 `dsh.client.inject` | 该字段列了 `@deepseek-ai/dsh-client-runtime`，此包在 `0.1.2-alpha.2` **不存在**（最接近的是 `dsh-client-modules`） | **不影响功能**：悬空依赖被 `system.ts` 静默跳过；仅声明与实际不符 |
@@ -136,8 +139,11 @@ curl -s http://localhost:3080/api/feishu/status
 | 4 | `appId` 写了但状态里是空串 | `cordis.patch.yml` 里 feishu 行缩进 4 空格，成了 `insert:` 列表的第 2 项 | 用 yaml 解析器打印结构，看到它嵌在 `insert` 数组里 |
 | 5 | 授权页 `ERR_TOO_MANY_REDIRECTS` | `dsh-web-startup-auth@0.1.9` 的浏览器 cookie 用 `SameSite=Strict`，跨站跳回不发送 → 反复铸 cookie 反复 303 | `curl -si <回调路径>` 返回 303 且 `location` 指向自身 + `Set-Cookie … Strict` |
 | 6 | 后台开了权限，调用仍报 `99991679` | 飞书权限分两层：应用权限发版即生效，用户授权范围在点「同意」那刻固化 | 应用身份调同接口成功、用户身份失败；且 `expiresAt` 没变说明新授权根本没发生 |
+| 7 | 设置页报「配置文件不可写：the profile patch file could not be located」。注意它**不影响显示**，只影响保存 | `link:` 安装时插件的四个候选全部落空：`patchFilePath` 未配、`DSH_PROFILE_DIR`/`DSH_PROFILE` 未设（第三项回退到 `desktop`）、从模块路径向上 6 层永远到不了 `~/.dsh/profiles/web/` | `GET /api/feishu/config` 返回的 `patch.file === null` 且 `entryFound === false` |
 
-**最容易再踩的**：坑 5 的补丁在 `node_modules` 里，`dsh plugin update` 或重装依赖会覆盖，届时授权会**再次死循环**。
+**最容易再踩的**：两点。
+① 坑 5 的补丁在 `node_modules` 里，`dsh plugin update` 或重装依赖会覆盖，届时授权会**再次死循环**。
+② 坑 7 在**每次 `link:` 安装**都会重现，所以它已写进 §7 重建步骤第 5 步 —— 别以为配了 appId 就够了。
 
 ---
 
@@ -162,7 +168,16 @@ curl -s http://localhost:3080/api/feishu/status
    `grep -o 'file:[^"]*' ~/.dsh/profiles/web/package.json` 后逐个确认文件存在
 4. 装插件：
    `cd <DSH 检出> && pnpm dsh plugin --profile web add <本仓库路径>`
-5. 写 appId 到 profile 的 `cordis.patch.yml`（**顶层** `- id: feishu`，缩进 0）
+5. 写 appId **与 `patchFilePath`** 到 profile 的 `cordis.patch.yml`（**顶层** `- id: feishu`，缩进 0）：
+
+   ```yaml
+   - id: feishu
+     config:
+       appId: 'cli_你的AppID'
+       patchFilePath: '/Users/<你>/.dsh/profiles/web/cordis.patch.yml'
+   ```
+
+   🔴 `patchFilePath` 不能省 —— `link:` 安装时插件定位不到 profile 的 patch 文件，设置页会报「配置文件不可写」（坑 7）
 6. 写 App Secret 到 `~/.dsh/.credentials.yaml` 的 `refs:` 段，`chmod 600`
 7. **给 `dsh-web-startup-auth` 打 `SameSite=Lax` 补丁**（坑 5），否则浏览器授权必然死循环
 8. `supervisorctl restart dsh-web`（或按本机实际方式重启）
@@ -194,7 +209,7 @@ curl -s http://localhost:3080/api/feishu/status
 | 项 | 值 |
 |---|---|
 | 编写会话 | `session-b920afcd-0a85-4866-b55a-f129fc90eb43` |
-| 编写日期 | 2026-10-27 |
-| 写了哪几节 | 全部（§接手 30 秒 ~ §8 与溯源）；本文件为首次创建，无历史追加 |
-| 数字来源 | `.dsh/handover-draft/2026-10-27-facts.md`（`handover_draft.py` 采集） |
+| 编写日期 | 2026-10-27（同日二次更新：补坑 7、refresh token 缺陷、`patchFilePath` 配置与重建步骤） |
+| 写了哪几节 | 首次创建写全部（§接手 30 秒 ~ §8 与溯源）；二次更新改 §2 状态表、§4.1 未做、§6 坑表（加坑 7）、§7 B 重建步骤第 5 步 |
+| 数字来源 | `.dsh/handover-draft/2026-10-27-facts.md`（`handover_draft.py` 采集）+ 本次实测（`feishu_auth status`、`GET /api/feishu/config`） |
 | 为什么新建而非追加 | 本仓库此前无任何 `HANDOVER*.md`；已在 `docs/README.md` 登记；排障全过程留在 `docs/` 主文档，本文件只承载状态、入口与迁移，避免同一事实两处存放 |
