@@ -17,3 +17,8 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# DSH local runtime state: the checkpoint (CONTINUE.md) and collection drafts.
+# Deliberately out of the repo — they are per-machine and per-hour, and the
+# handover package documents their content instead.
+.dsh/

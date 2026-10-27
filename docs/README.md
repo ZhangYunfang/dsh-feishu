@@ -8,6 +8,15 @@
 | [`dsh-plugin-contract-0.1.2-alpha.2.md`](./dsh-plugin-contract-0.1.2-alpha.2.md) | DSH 插件包契约调研：profile/bundle 解析、patch 方言、host/client 拆分、工具注册、设置 schema、HTTP 路由、版本清单，逐条带 `path:line` |
 | [`workspace-understanding/`](./workspace-understanding/) | 逆向分析产物：资源索引（`00`）、缺口与未决问题（`07`）、增量基线（`index.json`） |
 
+## 交接包（仓库根目录）
+
+| 文件 | 内容 |
+|---|---|
+| [`../HANDOVER.md`](../HANDOVER.md) | 主交接文档：接手 30 秒入口、当前实测状态、本阶段做了什么、**未做/未验证/待裁决**、下一步依赖顺序、6 个坑的现象→根因→判据、跨机器迁移清单 |
+| [`../HANDOVER-MEMORY.md`](../HANDOVER-MEMORY.md) | 记忆清单：换机器时要灌进记忆库的 10 条短事实 + 灌入方法 |
+
+断点（此刻状态）在 `.dsh/CONTINUE.md`，已被 `.gitignore` 排除 —— 属运行态，不随仓库走。
+
 ## 值得先看的三个结论
 
 1. **本插件与 DSH 0.1.2-alpha.2 没有 API 不兼容** —— 宿主半边用真实服务挂载实测通过（10 工具 / 6 路由）。
