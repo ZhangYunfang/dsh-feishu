@@ -842,6 +842,61 @@ async function main() {
     equal(value.data.appended, 2);
     assert(value.url.includes('dox1'), 'the document URL should be reported');
   });
+  await test('docx append_markdown asks the converter for markdown, not "md"', async () => {
+    const mock = mockFeishu();
+    mock.route('POST', '/open-apis/auth/v3/tenant_access_token/internal', () => ({ body: { code: 0, tenant_access_token: 't1', expire: 7200 } }));
+    let convertBody;
+    mock.route('POST', '/open-apis/docx/v1/documents/blocks/convert', (request) => {
+      convertBody = JSON.parse(String(request.init.body));
+      return { body: { code: 0, data: { blocks: [{ block_id: 'b1', block_type: 2 }], first_level_block_ids: ['b1'] } } };
+    });
+    mock.route('POST', '/open-apis/docx/v1/documents/dox1/blocks/dox1/descendant', () => ({ body: { code: 0, data: {} } }));
+    const { config, identity, client } = compose(mock);
+    const definitions = toolsMod.buildTools({ client, identity, config, resolveRedirectUri: () => REDIRECT });
+    const tool = find(definitions, 'feishu_doc');
+    await tool.execute({ action: 'append_markdown', documentId: 'dox1', markdown: 'hi' }, {});
+    equal(convertBody.content_type, 'markdown', 'Feishu answers content_type "md" with a bare field validation error');
+  });
+  await test('drive create_folder resolves the root folder when no folderToken is given', async () => {
+    const mock = mockFeishu();
+    mock.route('POST', '/open-apis/auth/v3/tenant_access_token/internal', () => ({ body: { code: 0, tenant_access_token: 't1', expire: 7200 } }));
+    mock.route('GET', '/open-apis/drive/explorer/v2/root_folder/meta', () => ({ body: { code: 0, data: { token: 'root1', id: '1' } } }));
+    let createBody;
+    mock.route('POST', '/open-apis/drive/v1/files/create_folder', (request) => {
+      createBody = JSON.parse(String(request.init.body));
+      return { body: { code: 0, data: { token: 'new1', url: 'https://example.test/folder/new1' } } };
+    });
+    const { config, identity, client } = compose(mock);
+    const definitions = toolsMod.buildTools({ client, identity, config, resolveRedirectUri: () => REDIRECT });
+    const tool = find(definitions, 'feishu_drive');
+    await tool.execute({ action: 'create_folder', name: 'demo' }, {});
+    equal(createBody.folder_token, 'root1', 'a root-level create must send the resolved root token, not omit the field');
+  });
+  await test('drive get_meta resolves a call that mixes docx and sheet tokens', async () => {
+    const mock = mockFeishu();
+    mock.route('POST', '/open-apis/auth/v3/tenant_access_token/internal', () => ({ body: { code: 0, tenant_access_token: 't1', expire: 7200 } }));
+    mock.route('POST', '/open-apis/drive/v1/metas/batch_query', (request) => {
+      const body = JSON.parse(String(request.init.body));
+      const docs = Array.isArray(body.request_docs) ? body.request_docs : [];
+      const accepted = docs.filter((doc) => doc.doc_type === 'docx' || doc.doc_type === 'sheet');
+      const rejected = docs.filter((doc) => doc.doc_type !== 'docx' && doc.doc_type !== 'sheet');
+      return {
+        body: {
+          code: 0,
+          data: {
+            metas: accepted.map((doc) => ({ doc_token: doc.doc_token, doc_type: doc.doc_type, title: 't-' + doc.doc_type })),
+            failed_list: rejected.map((doc) => ({ token: doc.doc_token, code: 970005 })),
+          },
+        },
+      };
+    });
+    const { config, identity, client } = compose(mock);
+    const definitions = toolsMod.buildTools({ client, identity, config, resolveRedirectUri: () => REDIRECT });
+    const tool = find(definitions, 'feishu_drive');
+    const value = await tool.execute({ action: 'get_meta', tokens: ['d1', 's1'] }, {});
+    equal(value.data.metas.length, 2, 'each token should resolve by trying the remaining doc types');
+    equal(value.data.failed, undefined, 'nothing should be left unresolved');
+  });
   await test('sheet write qualifies an unqualified range with the first sheet id', async () => {
     const mock = mockFeishu();
     mock.route('POST', '/open-apis/auth/v3/tenant_access_token/internal', () => ({ body: { code: 0, tenant_access_token: 't1', expire: 7200 } }));
@@ -884,7 +939,7 @@ async function main() {
   await test('drive download writes the local file', async () => {
     const mock = mockFeishu();
     mock.route('POST', '/open-apis/auth/v3/tenant_access_token/internal', () => ({ body: { code: 0, tenant_access_token: 't1', expire: 7200 } }));
-    mock.route('GET', '/open-apis/drive/v1/medias/f1/download', () => ({ status: 200, body: 'binary-payload' }));
+    mock.route('GET', '/open-apis/drive/v1/files/f1/download', () => ({ status: 200, body: 'binary-payload' }));
     const dir = await mkdtemp(join(tmpdir(), 'dsh-feishu-'));
     const target = join(dir, 'out.bin');
     try {
