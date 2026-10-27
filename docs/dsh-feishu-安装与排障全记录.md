@@ -11,11 +11,12 @@
 
 - [一、结论速览](#一结论速览)
 - [二、安装步骤（从零到可用）](#二安装步骤从零到可用)
-- [三、问题与解法（5 个坑）](#三问题与解法5-个坑)
+- [三、问题与解法（7 个坑）](#三问题与解法7-个坑)
 - [四、诊断方法论（可复用）](#四诊断方法论可复用)
 - [五、当前配置与文件清单](#五当前配置与文件清单)
 - [六、维护与复发风险](#六维护与复发风险)
-- [七、附录：命令速查与源码索引](#七附录命令速查与源码索引)
+- [七、全功能自测与修复（2026-10-27）](#七全功能自测与修复2026-10-27)
+- [八、附录：命令速查与源码索引](#八附录命令速查与源码索引)
 
 ---
 
@@ -880,7 +881,151 @@ if (record.refreshToken.length === 0) {
 
 ---
 
-## 七、附录：命令速查与源码索引
+## 七、全功能自测与修复（2026-10-27）
+
+前六节解决的是「装不上、连不通」。这一节是**逐个 action 扫全部 10 个工具**的结果，发现了 7 个此前没暴露的缺陷。
+
+### 7.1 自测矩阵
+
+| 工具 | 测过的 action | 结果 |
+|---|---|---|
+| `feishu_auth` | `status` `authorize_url` `complete` | ✅ |
+| `feishu_drive` | `list_files` `upload` `move` `delete_file` `get_meta` | ✅ |
+| | `download` | ❌→✅ 缺陷 1 |
+| | `create_folder`（带父目录 / 不带给） | ✅ / ❌→✅ 缺陷 2 |
+| | `get_meta`（单类型 / 混类型） | ✅ / ❌→✅ 缺陷 3 |
+| `feishu_doc` | `create` `get` `get_raw_content` `list_blocks` `append_blocks` | ✅ |
+| | `append_markdown` | ❌→⛔ 缺陷 4（代码）+ 缺陷 5（权限） |
+| | `import_file` | ❌ 缺陷 7（已修，未复验） |
+| `feishu_sheet` | `create` `get_info` `list_sheets` `write` `read` `append` | ✅ |
+| `feishu_bitable` | `create_app` `list_tables` `list_fields` `create_field` `insert_records` `search_records` | ✅ |
+| `feishu_query` | 聚合计数 | ⛔ 缺陷 5（权限） |
+| `feishu_dashboard` | `list_dashboards` | ⛔ 缺陷 5（权限） |
+| `feishu_wiki` | `list_spaces` `list_nodes` | ✅ |
+| `feishu_message` | `send_text` | ✅（实测发出一条 DM） |
+| `feishu_api` | GET/POST 直连 | ✅ |
+
+**图例**：✅ 通过 · ❌ 失败 · ⛔ 被权限阻塞 · → 表示已修复
+
+### 7.2 缺陷 1 · `download` 用错了端点
+
+**现象**：`download` 报 `downloading /drive/v1/medias/<token>/download failed with HTTP 403`。
+
+**排查**：`feishu_api` 直接打同一个 media 端点 → 同样 403 且**没有响应体**；改打 `/drive/v1/files/<token>/download` → 返回「非 JSON 响应」（= 文件二进制），即成功。
+
+**根因**：`feishu_drive upload` 用 `parent_type: 'explorer'` 上传的是**云盘文件**，下载要走 `/drive/v1/files/{file_token}/download`；`/drive/v1/medias/*` 是**媒体**（图片等）通道，拿文件 token 去查必然 403。
+
+**修复**（`lib/tools/drive.js`）：下载路径改成 `/drive/v1/files/<token>/download`。
+
+### 7.3 缺陷 2 · `create_folder` 在根目录建不了
+
+**现象**：不传 `folderToken` 时 `create_folder` 报 `field validation failed`；传了父目录 token 就成功。
+
+**根因**：飞书的建文件夹接口**要求** `folder_token`，而插件在没配默认目录时直接省略该字段，飞书回一个没有上下文的 `field validation failed`。工具描述里写的「不传即在根目录创建」做不到。
+
+**修复**（`lib/tools/drive.js`）：未给父目录时先调 `GET /drive/explorer/v2/root_folder/meta` 取根目录 token（实测返回 `nodcnx043PvbQ0msv7fXYrQnOOc`，与文件列表里的 `parent_token` 一致），再带着它建目录；拿不到就明确报错让调用方显式传 `folderToken`。
+
+### 7.4 缺陷 3 · `get_meta` 一次只能查一种类型
+
+**现象**：`get_meta` 传 docx / sheet / bitable 三个 token → `metas: []`，`failed` 里三条全是 `code: 970005`；单独传普通文件 token 却能成功。
+
+**根因**：`/drive/v1/metas/batch_query` 要求 **每个 token 各自带 `doc_type`**（missing/错误即 970005），而插件把**同一个** `doc_type`（默认 `'file'`）套给了整批。实测：省略 `doc_type` 直接报 `field validation failed`，所以不能靠「不传」自动识别。
+
+**修复**（`lib/tools/drive.js`）：
+- 新增 `docTypes` 参数（与 `tokens` 平行），可显式钉住类型；
+- 未钉住的 token 若首轮失败，**自动轮询剩余类型**直到命中（每个 token 最多试 6 次），彻底解决混类型调用；
+- 结果里保留真正没解析出来的 token，summary 会写「N unresolved」。
+
+### 7.5 缺陷 4 · `append_markdown` 传错枚举值
+
+**现象**：`append_markdown`（标题+段落+列表，不含表格）报 `field validation failed`。
+
+**排查**：先确认不是表格的锅——用最小原生 block 走 `append_blocks` 成功；再用递减法确认「纯标题+段落」也失败 → 问题在 Markdown 转换那一步。直接打 `POST /docx/v1/documents/blocks/convert` 对比两个枚举值：
+
+```
+content_type: 'md'        →  field validation failed
+content_type: 'markdown'  →  通过校验（转到权限检查）
+```
+
+**根因**：`lib/tools/docx.js` 的 `convertMarkdown` 把 `content_type` 写成了 `'md'`，飞书只认 `'markdown'`。
+
+**修复**：改成 `'markdown'`。
+
+### 7.6 缺陷 5 · 三个必需的权限不在推荐清单里
+
+上面把 `content_type` 改对之后，才暴露出真正的权限缺口：
+
+| 工具 | 缺的 scope |
+|---|---|
+| `feishu_doc` `append_markdown` | `docx:document.block:convert` |
+| `feishu_query` | `base:table:read` |
+| `feishu_dashboard` | `base:dashboard:read` |
+
+`bitable:app` **不覆盖** Base V3（LiteQuery 聚合与仪表盘）——这是两代接口各自独立的权限。
+
+**修复**（`lib/tools/auth.js`）：把三个 scope 加进 `RECOMMENDED_SCOPES`，这样新装用户的授权链接会自动申请它们；已装用户需要**在飞书后台加开 + 发版 + 重新授权**。
+
+### 7.7 缺陷 6 · 自动续期丢 refresh token（见 §六 风险 4）
+
+自测期间这个缺陷**真的把整套功能打瘫了**：令牌到期后 `refreshable` 为 `false`，所有工具统一报 `the stored Feishu grant has no refresh token`。
+
+**修复**（`lib/identity.js`）：续期响应未带新 token 时**无条件**沿用旧 token 与 `refreshExpiresAt`，不再按「密钥是否写在 `config.appSecret`」分支。
+
+### 7.8 缺陷 7 · `import_file` 缺 `extra` 字段
+
+**现象**：`import_file` 只报一句 `forbidden.`。
+
+**排查**：先排除端点与权限——`POST /drive/v1/import_tasks` 直接打，返回的是「file token not found」（校验错，**不是**权限错）→ 说明被拒的是**上传那一步**（`medias/upload_all` + `parent_type: 'ccm_import_open'`）。飞书对这个分支要求额外的 `extra` 字段描述要导入什么。
+
+**修复**（`lib/tools/docx.js`）：上传时补
+
+```js
+extra: JSON.stringify({ obj_type: targetType, file_extension: extension })
+```
+
+**状态**：已修，**未复验**（需要有效令牌，见 7.9）。
+
+### 7.9 验证方式与当前的收口状态
+
+**已经验证的**：
+
+```
+npm test  →  99 passed, 0 failed      （新增 3 条回归：转换枚举、根目录解析、混类型 get_meta）
+```
+
+三条回归测试直接锁定本次修复的行为，防止以后被改回去。其中「混类型 get_meta」这条还**抓到了我自己第一版实现里的逻辑漏洞**（把「默认类型」误当成「用户钉住的类型」，导致类型轮询被跳过）。
+
+**还没验证的**（因为令牌已过期，需要重新授权）：
+
+- 缺陷 1/2/3/7 在真实 API 上的复验
+- `feishu_query` / `feishu_dashboard` / `append_markdown` 的权限是否随重新授权生效
+- `feishu_auth refresh`（必须有 refresh token 才能测）
+- `bitable` 的 `update_records` / `delete_records` / `get_record`，`sheet` 的 `add_sheet`，`drive` 的 `get_meta` 显式 `docTypes`
+
+**收口三步**（缺一不可，顺序不能换）：
+
+1. 飞书后台「权限管理」加开 `base:table:read`、`base:dashboard:read`、`docx:document.block:convert` → **创建版本并发布**
+2. `supervisorctl restart dsh-web`（加载修复后的代码）
+3. 重新授权（链接见下），然后重跑 7.9 里那批未验证项
+
+> 重新授权时请确认同意页列出的是**一整套**权限；`state` 存在插件内存里，**重启后旧链接失效**，所以第 3 步必须在第 2 步之后。
+
+### 7.10 自测在飞书里留下的测试数据
+
+为了验证写路径，在你自己的云盘里建了这些对象（都在「临时」目录下的 `dsh-feishu-测试-20261027` 文件夹里）：
+
+| 对象 | token |
+|---|---|
+| 文件夹 `dsh-feishu-测试-20261027` | `GwWVfKmIPlN1Ogd2q7ucWed6nqW` |
+| 文档「DSH 飞书插件功能自测」 | `HjqAdVnjdoZkx4xcJZucdxcbnxc` |
+| 电子表格「DSH 飞书插件自测表」 | `EAemsaJThh6CJ1t0AI6cH28AnIh` |
+| 多维表格「DSH 插件自测多维表格」 | `JCZSbVNzsayprIsJfBNcO2LBnTb` |
+
+另外发出一条测试 DM。**验收完成后可整目录删除**，不影响插件。
+
+---
+
+## 八、附录：命令速查与源码索引
 
 ### 常用命令
 

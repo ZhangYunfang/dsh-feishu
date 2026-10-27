@@ -4,8 +4,9 @@
 
 | 文件 | 内容 |
 |---|---|
-| [`dsh-feishu-安装与排障全记录.md`](./dsh-feishu-安装与排障全记录.md) | **★ 主文档**：安装步骤（飞书云端 + DSH 本地 + 授权验证）、6 个坑的现象/根因/证据/解法、诊断方法论、配置清单、复发风险与恢复命令、命令速查与源码索引 |
+| [`dsh-feishu-安装与排障全记录.md`](./dsh-feishu-安装与排障全记录.md) | **★ 主文档**：安装步骤（飞书云端 + DSH 本地 + 授权验证）、7 个坑的现象/根因/证据/解法、诊断方法论、维护风险、**全功能自测与 7 处修复**、命令速查与源码索引 |
 | [`dsh-plugin-contract-0.1.2-alpha.2.md`](./dsh-plugin-contract-0.1.2-alpha.2.md) | DSH 插件包契约调研：profile/bundle 解析、patch 方言、host/client 拆分、工具注册、设置 schema、HTTP 路由、版本清单，逐条带 `path:line` |
+| [`记忆存档.md`](./记忆存档.md) | DSH 记忆库导出快照（项目 KEY 轨全文 + 相关项目/每日日志摘录 + 灌回新机器的方法），已脱敏 |
 | [`workspace-understanding/`](./workspace-understanding/) | 逆向分析产物：资源索引（`00`）、缺口与未决问题（`07`）、增量基线（`index.json`） |
 
 ## 交接包（仓库根目录）

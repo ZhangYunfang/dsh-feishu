@@ -49,7 +49,7 @@ curl -s http://localhost:3080/api/feishu/status
 | 宿主挂载实测 | 真实 `cordis@4.0.2` + 真实 `ToolRuntime`/`SystemPrompt`/`WebServer` → 10 工具 / 6 路由 / 无内部错误 |
 | 线上接口 | `GET /api/feishu/status` → 200；`feishu_drive list_files`（用户身份）返回 38 条 |
 | 设置页可写 | `patch.file = /Users/zyf/.dsh/profiles/web/cordis.patch.yml`（坑 7 已修） |
-| 授权续期 | ⚠️ `refreshable: false` —— 自动续期会丢 refresh token（见 §4.3 与主文档 §六 风险 4），约 2 小时后需重新授权 |
+| 授权续期 | 🔴 令牌已过期且 `refreshable: false`（自动续期丢 token 的缺陷已在代码中修复，但旧 grant 没有 refresh token）——**需重新授权才能继续使用** |
 
 **结论**：可用，但续期有已知缺陷。插件与 DSH `0.1.2-alpha.2` **没有 API 不兼容**。
 
@@ -68,11 +68,23 @@ curl -s http://localhost:3080/api/feishu/status
 | 5 | 本地鉴权插件 `SameSite=Strict` 导致 OAuth 回调死循环 | 第三方插件 | 已打补丁（**在 node_modules，会复发**） |
 | 6 | 飞书权限分「应用 / 用户」两层 | 概念 | 已理清（须重授权） |
 
-### 3.2 代码改动（唯一一处）
+### 3.2 代码改动（第二轮全功能自测后又加了 6 处）
 
-`lib/tools/kit.js` 新增 `sanitizeToJson()`，在 `defineTool` 的**唯一出口**净化结果：剔除 `undefined` 属性、数组空位补 `null`、`-0` → `0`、丢弃非有限数与循环引用。
+第一轮（`d2767b2`）：`lib/tools/kit.js` 新增 `sanitizeToJson()`，在 `defineTool` 的**唯一出口**净化结果：剔除 `undefined` 属性、数组空位补 `null`、`-0` → `0`、丢弃非有限数与循环引用。
 
-验证：`isJsonValue` 由 `false` → `true`；`npm test` 仍 `96 passed, 0 failed`。
+第二轮（逐 action 扫全部 10 个工具后）：
+
+| 文件 | 修复 | 触发症状 |
+|---|---|---|
+| `lib/tools/drive.js` | `download` 改走 `/drive/v1/files/{token}/download`（原用媒体通道） | HTTP 403 |
+| `lib/tools/drive.js` | `create_folder` 未给父目录时先解析根目录 token | `field validation failed` |
+| `lib/tools/drive.js` | `get_meta` 支持逐 token 类型 + 未钉住时自动轮询类型（新增 `docTypes`） | 混类型全 `970005` |
+| `lib/tools/docx.js` | `convertMarkdown` 的 `content_type` 由 `'md'` 改 `'markdown'` | `field validation failed` |
+| `lib/tools/docx.js` | `import_file` 的上传补 `extra` 字段 | `forbidden.` |
+| `lib/identity.js` | 续期未返新 token 时无条件沿用旧 token（原被 `config.appSecret` 守卫拦掉） | `refreshable` 变 `false`，2 小时后全线不可用 |
+| `lib/tools/auth.js` | `RECOMMENDED_SCOPES` 增加 `base:table:read`、`base:dashboard:read`、`docx:document.block:convert` | `feishu_query`/`feishu_dashboard`/`append_markdown` 报 `99991679` |
+
+验证：`isJsonValue` 由 `false` → `true`；`npm test` → **99 passed, 0 failed**（新增 3 条回归锁住本轮修复）。
 
 ### 3.3 文档产出
 
@@ -88,20 +100,25 @@ curl -s http://localhost:3080/api/feishu/status
 
 | 项 | 说明 | 影响 |
 |---|---|---|
-| **修 refresh token 连坐守卫** | `lib/identity.js` 续期时用 `config.appSecret.length > 0` 决定是否沿用旧 refresh token；密钥在凭据库时该守卫为假 ⇒ token 被覆盖成空串 ⇒ `refreshable` 变 `false`。详见主文档 §六 风险 4 | 🔴 **日常影响最大**：约 2 小时后必须重新授权 |
+| **在本机完成重新授权** | 令牌已过期且旧 grant 无 refresh token；需先在飞书后台加开 3 个权限并发版、重启 DSH，再走一次授权 | 🔴 不做则插件全线不可用 |
 | 重置飞书 App Secret | App Secret 曾以明文出现在排查对话中，已写入会话日志 | 泄密面，建议后台重置后更新两处配置 |
 | 给上游提 issue | `SameSite=Strict` 是通用缺陷（任何第三方 OAuth 回调都会死循环），尚未反馈给 `dsh-web-startup-auth` 作者 | 不修则每个用该插件的机器都要手工打补丁 |
 | 修正 `dsh.client.inject` | 该字段列了 `@deepseek-ai/dsh-client-runtime`，此包在 `0.1.2-alpha.2` **不存在**（最接近的是 `dsh-client-modules`） | **不影响功能**：悬空依赖被 `system.ts` 静默跳过；仅声明与实际不符 |
+| 清理自测留下的飞书对象 | `临时/dsh-feishu-测试-20261027` 下的 4 个对象与 1 条测试 DM | 不影响功能，验收后可删 |
 | 补齐 workspace 逆向分析产物 | 只产了 `00-resource-index.md` 与 `07-gaps-and-questions.md` | 缺架构/数据流/模块图等，属可选项 |
 
 ### 4.2 未验证
 
 | 项 | 为什么没验 |
 |---|---|
-| 10 个业务工具的**全部** action | 只验证了 `feishu_auth` 的 5 个 action 与 `feishu_drive list_files`；`feishu_bitable` / `feishu_doc` / `feishu_sheet` / `feishu_wiki` / `feishu_query` / `feishu_dashboard` / `feishu_message` 尚未逐个实跑 |
-| 浏览器半边的完整交互 | 悬浮面板能渲染、设置页能打开（状态接口 200），但表单保存路径**未点过**（本次配置是直接写文件完成的） |
-| 令牌自动续期 | `refreshable: true` 只证明拿了 refresh token，**未等到真正过期那一刻**验证自动刷新 |
+| **本轮 6 处修复的线上复验** | 自测期间令牌到期、且旧 grant 无 refresh token，`refreshable` 为 `false`——必须先在飞书后台加开 3 个权限并发版、重启 DSH、重新授权，之后才能复验 `download` / 根目录建夹 / 混类型 `get_meta` / `import_file` |
+| `feishu_query` / `feishu_dashboard` / `append_markdown` 的权限是否生效 | 同上，等重新授权 |
+| `feishu_auth refresh` | 必须有 refresh token 才能测，当前 grant 没有 |
+| 少数 action | `bitable` 的 `update_records`/`delete_records`/`get_record`、`sheet` 的 `add_sheet`、`drive.get_meta` 显式传 `docTypes` 未跑 |
+| 浏览器半边的完整交互 | 悬浮面板与设置页能渲染（`patch.file` 已指向 profile 的 patch 文件），但表单**保存**未实点过 |
 | 换机器重建 | 迁移清单为本机推演，**未在第二台机器实测** |
+
+其余 action 已在 2026-10-27 逐个实跑通过（矩阵见 `docs/dsh-feishu-安装与排障全记录.md` §七）。
 
 ### 4.3 待裁决
 
