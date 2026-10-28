@@ -1,6 +1,6 @@
 # dsh-feishu 0.1.1
 
-> 可直接粘贴到 GitHub Release / npm 描述的两用发布说明。
+> 本文件既是发布说明的源，也直接用作 GitHub Release 正文（正文里的链接已写成绝对 URL，点得开）。
 > 上游：`2048lr/dsh-feishu`（0.1.0）· 本分支：`ZhangYunfang/dsh-feishu`（0.1.1）
 > 验证宿主：DeepSeek Harness `0.1.2-alpha.2`，macOS + Node 24
 
@@ -20,7 +20,7 @@ dsh plugin add /path/to/dsh-feishu-0.1.1.tgz
 ```
 
 **必须做的一步**：飞书后台开通 15 项权限并**创建版本发布**，再注册重定向 URL `http://127.0.0.1:3080/api/feishu/oauth/callback`。
-逐条步骤（含常见故障对照）见 [`install-for-others.md`](./install-for-others.md)。
+逐条步骤（含常见故障对照）见 [`install-for-others.md`](https://github.com/ZhangYunfang/dsh-feishu/blob/main/docs/install-for-others.md)。
 
 ## 这一版相对上游 0.1.0 修了什么
 
@@ -65,11 +65,11 @@ feishu_auth refresh → 连跑两次均成功，refreshable 始终 true
 
 | 文档 | 内容 |
 |---|---|
-| [`install-for-others.md`](./install-for-others.md) | 装到另一台机器 / 给别人用：三通道安装、飞书应用配置、配置项、验收、故障对照 |
-| [`feishu-capabilities.md`](./feishu-capabilities.md) | 能力目录：10 工具 / 63 单元的作用、所需权限、实测覆盖度、明确不支持项 |
-| [`feishu-test-report.md`](./feishu-test-report.md) | 测试报告：62 条用例矩阵与结果、复现命令、安全护栏 |
-| [`feishu-issue-fix-log.md`](./feishu-issue-fix-log.md) | ISSUE-01…12：现象 → 根因 → 修复 → 回归 → 遗留 |
-| [`../CHANGELOG.md`](../CHANGELOG.md) | 三轮变更全记录（含提交号） |
+| [`install-for-others.md`](https://github.com/ZhangYunfang/dsh-feishu/blob/main/docs/install-for-others.md) | 装到另一台机器 / 给别人用：三通道安装、飞书应用配置、配置项、验收、故障对照 |
+| [`feishu-capabilities.md`](https://github.com/ZhangYunfang/dsh-feishu/blob/main/docs/feishu-capabilities.md) | 能力目录：10 工具 / 63 单元的作用、所需权限、实测覆盖度、明确不支持项 |
+| [`feishu-test-report.md`](https://github.com/ZhangYunfang/dsh-feishu/blob/main/docs/feishu-test-report.md) | 测试报告：62 条用例矩阵与结果、复现命令、安全护栏 |
+| [`feishu-issue-fix-log.md`](https://github.com/ZhangYunfang/dsh-feishu/blob/main/docs/feishu-issue-fix-log.md) | ISSUE-01…12：现象 → 根因 → 修复 → 回归 → 遗留 |
+| [`../CHANGELOG.md`](https://github.com/ZhangYunfang/dsh-feishu/blob/main/CHANGELOG.md) | 三轮变更全记录（含提交号） |
 
 ## Checksums
 
