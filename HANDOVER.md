@@ -221,8 +221,10 @@ curl -s http://localhost:3080/api/feishu/status
 | `docs/README.md` | 文档索引 + 三个核心结论 + 远程约定 |
 | `docs/dsh-feishu-安装与排障全记录.md` | **主排障文档**：安装步骤、6 个坑的完整过程、诊断方法论、配置清单、复发风险与恢复命令、命令速查与源码索引 |
 | `docs/dsh-plugin-contract-0.1.2-alpha.2.md` | DSH 插件包契约调研（逐条 `path:line`） |
-| `docs/feishu-test-report.md` | 全功能测试报告：61 条用例矩阵、权限阻塞总账、复现命令、安全护栏 |
-| `docs/feishu-issue-fix-log.md` | ISSUE-01…07 逐个问题的现象→根因→修复→回归 |
+| `CHANGELOG.md` | 变更记录：三轮改动（适配 / 契约修复 / 全功能测试与续期闭环）+ 提交号 + 复现命令 |
+| `docs/feishu-capabilities.md` | 功能能力目录：10 工具 / 63 单元的作用与所需权限、能力速查、不支持项、覆盖度 |
+| `docs/feishu-test-report.md` | 全功能测试报告：62 条用例矩阵、阻塞总账、复现命令、安全护栏 |
+| `docs/feishu-issue-fix-log.md` | ISSUE-01…12 逐个问题的现象→根因→修复→回归 |
 | `docs/workspace-understanding/` | 逆向分析产物（资源索引、缺口清单） |
 | `HANDOVER-MEMORY.md` | 记忆清单：换机器时要灌进记忆库的短事实 |
 | `.dsh/handover-draft/2026-10-27-facts.md` | 机器采集草稿（本文件数字的来源） |

@@ -26,11 +26,16 @@
 
 | 12 | `memory` | 飞书侧「授权链接申请的 scope 比实际授予的少」＝**应用后台未开通或未发版**，不是用户拒绝：拿带 `offline_access` 的链接授权后 `feishu_auth status` 的 `scope` 仍无它，即可判定。判据链：`scope` 缺 → 后台「权限管理」开通 → **创建版本并发布** → 重新授权。另：飞书权限报错 `99991679` 的 `detail` 里会明写 `required one of these privileges under the user identity: [xxx]`，**照抄这个 scope 名比自己猜准**。 | 本轮 7 条阻塞用例的唯一根因，且极易误判成代码缺陷 |
 
+| 13 | `memory` | 飞书仪表盘写操作是**四个独立 scope**：`base:dashboard:read` / `create` / `update` / `delete`。只开 read 时连 `create_dashboard` 都会 `99991679`；报错 `detail` 里会明写「required one of these privileges under the user identity: [xxx]」，**照抄那个名字**比自己猜准。 | 漏一个就整块能力不可用，且错误信息不解释 |
+| 14 | `memory` | `refreshable: true` 只是「记录里有 refresh token」的**存在性**检查，token 被撤销后照样显示 `true`（实测 `20064` 时仍为 true）。要证实「能续期」只能**真跑一次 `refresh`**，连跑两次更好；且 `refresh_token` 一次性，任何一次 refresh 都会轮换，**不能让只读凭据的测试进程去调它**。 | 会误判成「已修好」，也会误伤唯一授权 |
+| 15 | `memory` | 同一个 OAuth 流程若有两个入口（工具 + 路由各生成一条授权链接），**两边都必须把 `state` 登记到同一份 pending 集合**，否则只要其中一个被用过，另一个生成的链接就会在回调被判 `state mismatch`——用户已经点过同意才失败，最伤信任。 | 本轮真实发生（`ISSUE-08`） |
+| 16 | `memory` | 飞书「创建嵌套块」接口建表格时，`table.property` **只接受** `row_size` / `column_size` / `header_row`；把 convert 返回的 `property` 原样透传（含 `column_width`、`merge_info`）会 `1770001 invalid param`，而整块删掉 `property` 又报 `99992402 field validation failed`（必填）。 | Markdown 转文档时必踩 |
+
 ### 已写入状态
 
 | 项 | 状态 |
 |---|---|
-| 第 1–8、11 条（`memory` 轨） | 第 1–8 条**已写入**（本机 `KEY.md` 可见，最近的条目日期为 2026-10-27）；第 11 条于 2026-10-28 提交写入 |
+| 第 1–8、11–16 条（`memory` 轨） | 第 1–8 条已写入（2026-10-27）；第 11 条与第 13–16 条于 2026-10-28 写入 |
 | 第 9–10 条（`user` 轨） | **已写入**（`preferences.md` 可见） |
 | 待确认队列 `~/.dsh/memories/SUGGESTIONS.jsonl` | **0 条**（采集时实测，无未生效的建议） |
 
@@ -40,7 +45,7 @@
 
 ### 2.1 首选：用 `memory` 工具逐条写入
 
-在新机器的 DSH 会话里，对第 1–8、11 条用 `memory` 工具的 `add` 动作：
+在新机器的 DSH 会话里，对第 1–8、11–16 条用 `memory` 工具的 `add` 动作：
 
 ```
 memory(action="add", target="memory", content="<第 1 条的短事实>")
