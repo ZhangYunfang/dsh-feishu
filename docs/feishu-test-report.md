@@ -45,17 +45,17 @@
 
 | 领域 | 用例 | 通过 | 失败 | 阻塞 | 跳过 |
 |---|---|---|---|---|---|
+| auth | 7 | 4 | 0 | 0 | 3 |
 | api | 2 | 2 | 0 | 0 | 0 |
-| auth | 6 | 3 | 0 | 1 | 2 |
-| bitable | 10 | 10 | 0 | 0 | 0 |
-| dashboard | 8 | 0 | 0 | 1 | 7 |
-| doc | 8 | 7 | 0 | 1 | 0 |
 | drive | 5 | 5 | 0 | 0 | 0 |
-| message | 8 | 7 | 0 | 1 | 0 |
-| query | 3 | 0 | 0 | 3 | 0 |
+| doc | 8 | 8 | 0 | 0 | 0 |
 | sheet | 7 | 7 | 0 | 0 | 0 |
+| bitable | 10 | 10 | 0 | 0 | 0 |
+| query | 3 | 3 | 0 | 0 | 0 |
+| dashboard | 8 | 6 | 0 | 2 | 0 |
 | wiki | 4 | 3 | 0 | 0 | 1 |
-| **合计** | **61** | **44** | **0** | **7** | **10** |
+| message | 8 | 7 | 0 | 1 | 0 |
+| **合计** | **62** | **55** | **0** | **3** | **4** |
 
 判定口径：
 - **pass**：真接口返回且断言成立（含清理成功）
@@ -63,7 +63,7 @@
 - **skipped**：刻意不跑（破坏性、需要人工粘贴 code、或创建后无从清理）
 - **fail**：代码或契约缺陷，必须修
 
-**本轮 0 失败**。7 条 blocked 全部指向同一件事：应用后台缺 4 个权限（见 §6）。
+**本轮 0 失败**。3 条 blocked：两条是应用后台还没开通 `base:dashboard:update` / `base:dashboard:delete`，一条是 webhook 需要用户自建机器人（见 §6）。
 
 ---
 
@@ -76,67 +76,68 @@
 
 | 用例 | 优先级 | 领域 | 状态 | 证据 |
 |---|---|---|---|---|
-| `AUTH-01` | P0 | auth | pass | tenant ok · user Hunter Zhang · refreshable=false · scope=9 items |
-| `AUTH-02` | P0 | auth | pass | scopes=13 · redirect=http://127.0.0.1:3080/api/feishu/oauth/callback |
+| `AUTH-01` | P0 | auth | pass | tenant ok · user Hunter Zhang · refreshable=true · scope=14 items |
+| `AUTH-02` | P0 | auth | pass | scopes=15 · redirect=http://127.0.0.1:3080/api/feishu/oauth/callback |
 | `AUTH-06` | P2 | auth | pass | fallback redirect=http://127.0.0.1:3080/api/feishu/oauth/callback |
-| `AUTH-03` | P0 | auth | blocked | the stored Feishu grant has no refresh token |
+| `AUTH-03` | P0 | auth | pass | refreshable · scope=14 items · refresh expires in 7d |
+| `AUTH-07` | P0 | auth | skipped | deliberate: refreshing here rotates the single-use token, and this harness mounts the store read-only, so the rotated value could not be persisted — t |
 | `AUTH-04` | P1 | auth | skipped | destructive: the stored grant is the only one, and refresh_token is single-use |
 | `AUTH-05` | P2 | auth | skipped | needs a fresh authorization code pasted in; the state is single-use |
 | `API-01` | P0 | api | pass | root token present=true |
 | `API-02` | P1 | api | pass | files key present=true |
-| `DRV-01` | P0 | drive | pass | files=43 · has_more=undefined |
-| `DRV-02` | P0 | drive | pass | token=RKBhf7V8llDJ8wdC1JLci3y… |
-| `DRV-03` | P0 | drive | pass | token=Jm1PbVqMno5u1IxCllwcDNq… · uploaded DSH-TEST-202610280320.txt (49 bytes) as Jm1PbVqMno… |
+| `DRV-01` | P0 | drive | pass | files=38 · has_more=undefined |
+| `DRV-02` | P0 | drive | pass | token=AfhifRBL2lHc5hd9xsNc5fF… |
+| `DRV-03` | P0 | drive | pass | token=VlqLbSCOgoVMNNxuZF7ckGP… · uploaded DSH-TEST-202610280358.txt (49 bytes) as VlqLbSCOgo… |
 | `DRV-04` | P0 | drive | pass | 49 bytes · round-trip ok |
-| `DRV-05` | P1 | drive | pass | metas=1 · {"create_time":"1793157650","doc_token":"RKBhf7V8llDJ8wdC1JLci3y0n8v","doc_type… |
-| `DOC-01` | P0 | doc | pass | documentId=LAN5d4sg8obuz6x5fXJ… · https://feishu.cn/docx/LAN5d4sg8obuz6x5fXJc8zDlnh7 |
-| `DOC-02` | P0 | doc | blocked | blocked: the user grant lacks docx:document.block:convert (Feishu code 99991679); the app console must enable it, publish a version, and then be re-au |
+| `DRV-05` | P1 | drive | pass | metas=1 · {"create_time":"1793159917","doc_token":"AfhifRBL2lHc5hd9xsNc5fFenvf","doc_type… |
+| `DOC-01` | P0 | doc | pass | documentId=TVkGdNeDSomVRfxQnbq… · https://feishu.cn/docx/TVkGdNeDSomVRfxQnbqcBGVunlB |
+| `DOC-02` | P0 | doc | pass | converted and appended 14 block(s) of Markdown |
 | `DOC-03` | P1 | doc | pass | appended 1 block(s) |
-| `DOC-04` | P1 | doc | pass | blocks=2 |
-| `DOC-05` | P0 | doc | pass | chars=58 |
-| `DOC-06` | P1 | doc | pass | DSH-TEST-202610280320-doc |
-| `DOC-07` | P1 | doc | pass | keys=ticket,extra,job_error_msg,job_status · imported DSH-TEST-202610280320-import.m… |
-| `DOC-08` | P2 | doc | pass | import ticket 7701553520977300664 status read |
-| `SHT-01` | P0 | sheet | pass | token=XNdrsdpXQhiKR1tnGeN… |
+| `DOC-04` | P1 | doc | pass | blocks=16 |
+| `DOC-05` | P0 | doc | pass | chars=207 |
+| `DOC-06` | P1 | doc | pass | DSH-TEST-202610280358-doc |
+| `DOC-07` | P1 | doc | pass | keys=ticket,extra,job_error_msg,job_status · imported DSH-TEST-202610280358-import.m… |
+| `DOC-08` | P2 | doc | pass | import ticket 7701563225007246318 status read |
+| `SHT-01` | P0 | sheet | pass | token=Fx39s9ewLhiX44tDjgQ… |
 | `SHT-02` | P1 | sheet | pass | read spreadsheet metadata |
 | `SHT-03` | P1 | sheet | pass | sheets=1 |
-| `SHT-04` | P0 | sheet | pass | wrote 3 row(s) at 8d3fea!A1:B3 |
+| `SHT-04` | P0 | sheet | pass | wrote 3 row(s) at 7a42aa!A1:B3 |
 | `SHT-05` | P0 | sheet | pass | rows=3 |
-| `SHT-06` | P1 | sheet | pass | appended 1 row(s) at 8d3fea!A1:B1 |
-| `SHT-07` | P1 | sheet | pass | added sheet 2Y60b6 to the spreadsheet |
-| `BIT-01` | P0 | bitable | pass | appToken=Cpi4bIfK3aove3shBGV… |
+| `SHT-06` | P1 | sheet | pass | appended 1 row(s) at 7a42aa!A1:B1 |
+| `SHT-07` | P1 | sheet | pass | added sheet 3FXyO4 to the spreadsheet |
+| `BIT-01` | P0 | bitable | pass | appToken=SVATbaXBnaZ1fCsyEa5… |
 | `BIT-02` | P0 | bitable | pass | tables=2 · first=数据表 |
-| `BIT-03` | P1 | bitable | pass | created table "tags" (tblb7F1GglvX0j81) |
-| `BIT-04` | P1 | bitable | pass | created field "备注" in table tblOOzNHAijzDm5a |
+| `BIT-03` | P1 | bitable | pass | created table "tags" (tblXQ7FWlYMLEgXW) |
+| `BIT-04` | P1 | bitable | pass | created field "备注" in table tblNS2Vbf16pQmuo |
 | `BIT-05` | P0 | bitable | pass | fields=4 |
 | `BIT-06` | P0 | bitable | pass | records=2 |
 | `BIT-07` | P0 | bitable | pass | matched=1 · total=1 |
-| `BIT-08` | P1 | bitable | pass | updated 1 record(s) in table tblOOzNHAijzDm5a |
-| `BIT-09` | P1 | bitable | pass | read record reczz28SgEmoKeGI |
-| `BIT-10` | P1 | bitable | pass | deleted 1 record(s) from table tblOOzNHAijzDm5a |
-| `QRY-01` | P1 | query | blocked | blocked: the user grant lacks base:table:read (Feishu code 99991679); the app console must enable it, publish a version, and then be re-authorized |
-| `QRY-02` | P1 | query | blocked | blocked: the user grant lacks base:table:read (Feishu code 99991679); the app console must enable it, publish a version, and then be re-authorized |
-| `QRY-03` | P2 | query | blocked | blocked: the user grant lacks base:table:read (Feishu code 99991679); the app console must enable it, publish a version, and then be re-authorized |
-| `DSH-01` | P1 | dashboard | blocked | blocked: the user grant lacks base:dashboard:create (Feishu code 99991679); the app console must enable it, publish a version, and then be re-authoriz |
-| `DSH-02` | P1 | dashboard | skipped | a prerequisite case failed |
-| `DSH-03` | P1 | dashboard | skipped | a prerequisite case failed |
-| `DSH-04` | P1 | dashboard | skipped | a prerequisite case failed |
-| `DSH-05` | P2 | dashboard | skipped | a prerequisite case failed |
-| `DSH-06` | P1 | dashboard | skipped | a prerequisite case failed |
-| `DSH-07` | P2 | dashboard | skipped | a prerequisite case failed |
-| `DSH-08` | P2 | dashboard | skipped | a prerequisite case failed |
+| `BIT-08` | P1 | bitable | pass | updated 1 record(s) in table tblNS2Vbf16pQmuo |
+| `BIT-09` | P1 | bitable | pass | read record reczz28SgsO5wi6D |
+| `BIT-10` | P1 | bitable | pass | deleted 1 record(s) from table tblNS2Vbf16pQmuo |
+| `QRY-01` | P1 | query | pass | rows=1 · [{"n":1,"状态":"待办"}] |
+| `QRY-02` | P1 | query | pass | [{"mean":"9","total":"9"}] |
+| `QRY-03` | P2 | query | pass | rows=1 |
+| `DSH-01` | P1 | dashboard | pass | dashboardId=blk37oCKsYgJsxgb |
+| `DSH-02` | P1 | dashboard | pass | blockId=chtcnLuNGubFPGXoEFE2B… |
+| `DSH-03` | P1 | dashboard | pass | blockId=chtcniGJNvjVuzGOi5IIq… |
+| `DSH-04` | P1 | dashboard | pass | blocks=2 |
+| `DSH-05` | P2 | dashboard | pass | read block "DSH-TEST-chart" (column) |
+| `DSH-06` | P1 | dashboard | pass | {"dimensions":[{"alias":"dim_54q25oCB","field_name":"状态"}],"main_data":[{"dim_54q25oCB":{"value":"待… |
+| `DSH-07` | P2 | dashboard | blocked | blocked: the user grant lacks base:dashboard:update (Feishu code 99991679); the app console must enable it, publish a version, and then be re-authoriz |
+| `DSH-08` | P2 | dashboard | blocked | blocked: the user grant lacks base:dashboard:delete (Feishu code 99991679); the app console must enable it, publish a version, and then be re-authoriz |
 | `WIK-01` | P1 | wiki | pass | spaces=3 · first=[旖旎量化] |
 | `WIK-02` | P1 | wiki | pass | nodes=6 |
 | `WIK-03` | P1 | wiki | pass | resolved node "[旖旎量化]文档首页" to docx CjWEd6Hwxo4et1xYFSQc65ugngb |
 | `WIK-04` | P1 | wiki | skipped | blocked: neither the plugin nor the open platform offers a delete-node call, so a created node cannot be cleaned up — needs a disposable test space |
-| `MSG-01` | P0 | message | pass | message_id=om_x100b6122ebd6f8b4def… |
-| `MSG-02` | P0 | message | pass | replied to message om_x100b61… |
-| `MSG-03` | P1 | message | pass | message_id=om_x100b6122ebf18cacc0e… |
-| `MSG-04` | P1 | message | pass | message_id=om_x100b6122eb80e138c48… |
-| `MSG-05` | P1 | message | pass | message_id=om_x100b6122eb4c28acde9… |
-| `MSG-06` | P1 | message | pass | message_id=om_x100b6122eb6cb8acde5… |
+| `MSG-01` | P0 | message | pass | message_id=om_x100b61237f0540accd0… |
+| `MSG-02` | P0 | message | pass | replied to message om_x100b61237f0540accd0f21563fca31b |
+| `MSG-03` | P1 | message | pass | message_id=om_x100b61237f11c8a8ce9… |
+| `MSG-04` | P1 | message | pass | message_id=om_x100b61237f2be4a0cf9… |
+| `MSG-05` | P1 | message | pass | message_id=om_x100b61237f3530a8ce9… |
+| `MSG-06` | P1 | message | pass | message_id=om_x100b61237cc6dc80b08… |
 | `MSG-07` | P2 | message | blocked | blocked: needs a custom-bot webhook URL, which only the user can create |
-| `MSG-08` | P2 | message | pass | called DELETE /im/v1/messages/om_x100b61… |
+| `MSG-08` | P2 | message | pass | called DELETE /im/v1/messages/om_x100b61237f0540accd0f21563fca31b |
 
 ---
 

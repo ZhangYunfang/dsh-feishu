@@ -215,13 +215,22 @@ function cases(t) {
       },
     },
     {
-      id: 'AUTH-03', p: 'P0', area: 'auth', expect: 'blocked',
-      desc: 'feishu_auth refresh re-mints the user token',
+      id: 'AUTH-03', p: 'P0', area: 'auth',
+      desc: 'feishu_auth status reports a refreshable grant and its own lifetime',
       async run() {
-        const r = await t.call('feishu_auth', { action: 'refresh' });
-        assertOk(r, 'refresh');
-        return 'refreshed · expiresAt=' + String(r.data.user.expiresAt);
+        const r = assertOk(await t.call('feishu_auth', { action: 'status' }), 'status');
+        const user = r.data.user;
+        assert(user.refreshable === true, 'the stored grant must be refreshable, i.e. carry a live refresh token');
+        assert(String(user.scope).split(' ').includes('offline_access'), 'offline_access is what keeps the grant refreshable');
+        assert(typeof user.refreshExpiresInDays === 'number', 'the refresh lifetime should be reported in days');
+        return 'refreshable · scope=' + String(user.scope).split(' ').length + ' items · refresh expires in ' + user.refreshExpiresInDays + 'd';
       },
+    },
+    {
+      id: 'AUTH-07', p: 'P0', area: 'auth',
+      skip: 'deliberate: refreshing here rotates the single-use token, and this harness mounts the store read-only, so the rotated value could not be persisted — the live grant would be consumed. Run it through the tool instead.',
+      desc: 'feishu_auth refresh re-mints the user token',
+      async run() { return 'skipped'; },
     },
     {
       id: 'AUTH-04', p: 'P1', area: 'auth', skip: 'destructive: the stored grant is the only one, and refresh_token is single-use',
@@ -745,16 +754,24 @@ function cases(t) {
       id: 'DSH-07', p: 'P2', area: 'dashboard', gate: ['DSH-02'],
       desc: 'feishu_dashboard update_block renames a block',
       async run() {
-        const r = assertOk(await t.call('feishu_dashboard', { action: 'update_block', baseToken: C.baseToken, dashboardId: C.dashId, blockId: C.textBlockId, name: 'DSH-TEST-text-renamed' }), 'update_block');
-        return clip(r.summary, 80);
+        try {
+          const r = assertOk(await t.call('feishu_dashboard', { action: 'update_block', baseToken: C.baseToken, dashboardId: C.dashId, blockId: C.textBlockId, name: 'DSH-TEST-text-renamed' }), 'update_block');
+          return clip(r.summary, 80);
+        } catch (error) {
+          throw asScopeBlocker(error, t, 'base:dashboard:update');
+        }
       },
     },
     {
       id: 'DSH-08', p: 'P2', area: 'dashboard', gate: ['DSH-02'],
       desc: 'feishu_dashboard delete_block removes the text block',
       async run() {
-        const r = assertOk(await t.call('feishu_dashboard', { action: 'delete_block', baseToken: C.baseToken, dashboardId: C.dashId, blockId: C.textBlockId }), 'delete_block');
-        return clip(r.summary, 80);
+        try {
+          const r = assertOk(await t.call('feishu_dashboard', { action: 'delete_block', baseToken: C.baseToken, dashboardId: C.dashId, blockId: C.textBlockId }), 'delete_block');
+          return clip(r.summary, 80);
+        } catch (error) {
+          throw asScopeBlocker(error, t, 'base:dashboard:delete');
+        }
       },
     },
 

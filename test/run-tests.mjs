@@ -1060,7 +1060,9 @@ async function main() {
     const auth = await import('file:///' + join(LIB, 'tools', 'auth.js').replace(/\\/gu, '/'));
     assert(auth.RECOMMENDED_SCOPES.includes('offline_access'), 'offline_access is what makes the grant refreshable');
     assert(auth.RECOMMENDED_SCOPES.includes('base:dashboard:read'), 'dashboard reads need this');
-    assert(auth.RECOMMENDED_SCOPES.includes('base:dashboard:create'), 'dashboard writes need this');
+    assert(auth.RECOMMENDED_SCOPES.includes('base:dashboard:create'), 'creating a dashboard or a block needs this');
+    assert(auth.RECOMMENDED_SCOPES.includes('base:dashboard:update'), 'updating a block needs this');
+    assert(auth.RECOMMENDED_SCOPES.includes('base:dashboard:delete'), 'deleting a block needs this');
   });
   await test('drive create_folder resolves the root folder when no folderToken is given', async () => {
     const mock = mockFeishu();

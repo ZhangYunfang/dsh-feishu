@@ -136,6 +136,66 @@
 | **回归** | 离线：新增用例断言「对外宣告的 state = 登记进 pending 的 state = URL 里携带的 state」→ 通过（`108 passed`）。线上：改用 `/api/feishu/oauth/start?json=1` 拿到**服务端已登记**的 state，再按该 state + 13 项 scope 拼链接，用户点开可正常回跳 |
 | **遗留风险** | 修复需重启 dsh-web 才对工具生成的新链接生效；在此之前请用面板入口（或按 `start` 返回的 state 拼链接）。另：`/start` 生成的链接**不带 `scope` 参数**（`config.oauthScopes` 为空时 `scopes.join(' ')` 为空串被 query 跳过），等于放弃显式申请权限——本轮靠显式拼 13 项 scope 规避 |
 
+
+---
+
+## ISSUE-09 · `append_markdown` 追加含表格的 Markdown 必失败（`feishu_doc`）
+
+| 项 | 内容 |
+|---|---|
+| **功能与用例** | `feishu_doc append_markdown` · `DOC-02` |
+| **现象** | 权限开通后真正走到「转换 → 追加」两步，追加报 `1770001 invalid param`；纯文本/列表/代码块都正常，**只有含表格时失败**，且只在**追加**这一步失败（转换本身成功） |
+| **复现** | `feishu_doc action=append_markdown documentId=<doc> markdown="| a | b |\n|---|---|\n| 1 | 2 |"` |
+| **环境** | 用户身份；`docx:document` + `docx:document.block:convert` 均已授予 |
+| **关键日志** | `{"code":1770001,"msg":"invalid param","error":{"helps":[{"description":"确认参数是否合法"}]}}` |
+| **根因** | 转换接口返回的表格块带 `table.property = {row_size, column_size, column_width, merge_info}`；`append_markdown` 把整个 `property` **原样**塞给「创建嵌套块」接口，而该接口的建表语义里 `column_width` / `merge_info` 不接受（文档存在后是「既定几何」，创建时不能声明）。二分实测：`property` 原样 → fail；只留 `{row_size, column_size}` → **OK**；整块删掉 `property` → `99992402 field validation failed`（必填）。 |
+| **修复** | 新增 `withCreatableTable(block)`：对 `block_type === 31` 的块，把 `table.property` 归一到建表允许的键（`row_size` / `column_size` / `header_row`），其余丢弃。只作用于 `append_markdown` 的转换产物，不碰 `append_blocks` 的调用方数据。 |
+| **修改文件** | `lib/tools/docx.js` |
+| **回归** | 线上 `DOC-02` 由 fail → **pass**，整篇含标题/粗斜体/行内码/列表/表格/代码块的 Markdown 追加成功；`DOC-05` 读回 207 字符含标记。离线套件保持 108 通过。 |
+| **遗留风险** | 表格列宽在创建时无法指定（飞书限制），会按默认宽度渲染 |
+
+---
+
+## ISSUE-10 · 推荐 scope 仍缺仪表盘改/删权限（`feishu_auth`）
+
+| 项 | 内容 |
+|---|---|
+| **功能与用例** | `feishu_dashboard update_block` / `delete_block` · `DSH-07`、`DSH-08` |
+| **现象** | 开通 `base:dashboard:read` + `base:dashboard:create` 后，创建/列块都通过，但改块、删块仍 `99991679` |
+| **复现** | 按推荐 scope 授权 → `feishu_dashboard action=update_block` → `required one of these privileges under the user identity: [base:dashboard:update]` |
+| **根因** | 仪表盘的四种写操作**各自一个 scope**：create（建仪表盘/建块）、update（改块）、delete（删块）。推荐清单只补了 create |
+| **修复** | `RECOMMENDED_SCOPES` 增补 `base:dashboard:update`、`base:dashboard:delete`；回归用例同步断言三件套 |
+| **修改文件** | `lib/tools/auth.js`、`test/run-tests.mjs` |
+| **回归** | 源码侧已就绪（108 通过）；**线上仍 blocked**，需后台开通这两个 scope 并重新授权 |
+| **遗留风险** | 🔴 用户侧操作未完（见 ISSUE-07 的处置） |
+
+---
+
+## ISSUE-11 · 工具失败时 hint / 错误码 / 路径全部丢失（`lib/tools/kit.js`）
+
+| 项 | 内容 |
+|---|---|
+| **功能与用例** | 所有工具的失败路径（本轮在 `feishu_auth refresh` 上撞见） |
+| **现象** | 续期因 token 被撤销而失败，界面只显示 `Error: OAuth token refresh failed: invalid_grant (...)`,**完全没有** `code: 20064`、「该 token 一次性、请重新授权」这类可执行提示，也没 http 状态与路径 |
+| **复现** | 让续期失败（例如 refresh token 已被使用）→ 观察工具报错文本 |
+| **根因** | 宿主把失败的 tool 调用渲染成 `error.message` 一个字段；而 `FeishuError` 把可执行信息放在 `hint` / `code` / `path` / `detail` 里，只有 `toText()` 才会拼进去——于是 **`errors.js` 里精心写的提示在聊天里一次都没出现过** |
+| **修复** | `defineTool` 的出口加 catch：若为 `FeishuError` 且 message 尚未展开，则把 `toText()` 的完整块写回 `error.message`（**保留 error 对象本身**，所以 `code` 仍可被程序读取），再抛出 |
+| **修改文件** | `lib/tools/kit.js` |
+| **回归** | 离线 108 通过（现有用例按子串断言，不受影响）；线上表现需**重启 dsh-web** 后生效 |
+| **遗留风险** | 报错文本会变长（含 detail 前 600 字符），属有意为之：可读性换可诊断性 |
+
+---
+
+## ISSUE-12 · 测试运行器自己会消耗一次性 refresh token（方法论缺陷）
+
+| 项 | 内容 |
+|---|---|
+| **现象** | 首次全量跑里 `AUTH-03` 真的调用了 `feishu_auth refresh`；由于运行器把凭据库挂成只读，轮换出的新 token **无处落盘** → 线上那份 grant 的 refresh token 被消费掉，之后续期报 `20064 已撤销` |
+| **根因** | 把「破坏性 + 需要落盘」的动作放进自动用例；且运行器的只读护栏本意是保护凭据，却与「真续期」互斥 |
+| **修复** | `AUTH-03` 改为**非破坏性**断言（读 status 校验 `refreshable` + `offline_access` + `refreshExpiresInDays`），真续期单独列为 `AUTH-07` 并显式标记为**故意跳过**，理由写在用例里；续期改由 `feishu_auth` 手动跑（它是唯一会把新 token 落盘的出口） |
+| **教训** | ①「只读凭据库」的护栏必须同时约束**会轮换凭证的调用**，两者是一对；②`refreshable: true` 只是「记录里有 refresh token」的**存在性**检查，不代表它还有效——撤销后照样显示 true，只有真续期才能证伪 |
+| **遗留风险** | 本次已消耗掉一份 grant（需重新授权一次），代价记在此处避免重犯 |
+
 ---
 
 ## 汇总
@@ -149,4 +209,8 @@
 | ISSUE-05 | 推荐 scope 缺仪表盘写权限 | 已修 | `39c7396` |
 | ISSUE-06 | 撤回要用发送方身份 | 契约要点（文档化） | `39c7396` |
 | ISSUE-07 | 后台缺 5 个权限 | 🔴 阻塞，需用户操作 | — |
-| ISSUE-08 | 工具生成的授权链接被自己回调拒 | 已修（需重启生效） | 本次提交 |
+| ISSUE-08 | 工具生成的授权链接被自己回调拒 | 已修（需重启生效） | `5918340` |
+| ISSUE-09 | 含表格的 Markdown 追加必失败 | 已修，线上验证通过 | 本次提交 |
+| ISSUE-10 | 推荐 scope 缺仪表盘改/删 | 源码已修，待后台开权限 | 本次提交 |
+| ISSUE-11 | 工具失败的 hint/错误码被吞 | 已修（需重启生效） | 本次提交 |
+| ISSUE-12 | 运行器消耗了一次性 refresh token | 已修（用例改非破坏性） | 本次提交 |
