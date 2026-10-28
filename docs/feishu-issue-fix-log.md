@@ -229,7 +229,7 @@
 | **修复** | ①`anchorDirectory()`：锚点是已存在目录时原样使用；②新增 `locateIdOnlyBlock()`：按 `id: feishu` 兜底查找（`insert:` 列表跳过）；③`writeEntry()` 每次写入补 `merged.patchFilePath = file`；④新增 `locatedIsOverride()`：块形式跟随被替换的块，避免把手写 override 改写成 `insert:` 而重复定义 id |
 | **修改文件** | `lib/entry-config.js`、`test/run-tests.mjs`、`docs/dsh-feishu-安装与排障全记录.md`（风险 6）、`CHANGELOG.md` |
 | **回归** | 离线：新增 3 条用例（baseUrl 指目录 / id-only 条目 / 不留两条同 id）→ **112 passed, 0 failed**（原 109）。线上：修好 yaml 后 `patch.file` 立刻非 null（`patchReload: live`），`entryFound: true`、`readable: true`、`error: null` |
-| **遗留风险** | 修复在 `lib/` 里，**要重启 dsh-web 才加载**；版本号仍是 0.1.1，未重打 tgz。其他安装者若已踩坑，需手工把 `patchFilePath` 写进唯一那条 managed 块（或删掉手写条目让设置页重写） |
+| **遗留风险** | 修复在 `lib/` 里，**要重启 dsh-web 才加载**；已随 **0.1.2** 发版（tag `v0.1.2`，`dsh-feishu-0.1.2.tgz`，sha256 `38d9da0a…227d03e8`）。其他安装者若已踩坑，重启即自愈（新代码从 `ctx.baseUrl` 直接定位），或手工把 `patchFilePath` 写进唯一那条 managed 块（删掉手写条目让设置页重写） |
 
 ---
 

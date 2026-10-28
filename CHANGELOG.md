@@ -6,7 +6,7 @@
 
 ---
 
-## v0.1.1+（未发版） · 2026-10-28 · 设置页把自己锁死的两个定位缺陷
+## v0.1.2 · 2026-10-28 · 已发版（设置页把自己锁死的两个定位缺陷）
 
 用户侧症状：设置页保存过一次配置后，此后每次打开都报「配置文件不可写：the profile patch file could not be located」，重启无效。查下来是**写入口与读入口各有一个缺陷**，任一存在都会让 `link:` 安装永远找不到自己的 `cordis.patch.yml`。
 
@@ -20,7 +20,8 @@
 
 线上验证：`patchReload: live`，修好 yaml 当场生效（不用重启）；本修复改的是 `lib/`，需重启 dsh-web 才加载。
 同期复验续期缺陷（同一个 dsh-web 进程 / 17:35）：`feishu_auth refresh` 连跑两次 → 两次都 `refreshable: true`、`scope` 16 项含 `offline_access`、`expiresAt` 每次前进、`refreshExpiresInDays` 重新给到 7 天 ⇒ `41b91fe` 的修复在线上依然成立，「约 2 小时就要重授权」没有再出现。
-未做的事：**没有发新版本、也没重打 tgz** —— 版本号仍是 0.1.1，等下次发版一并带出。
+发版：`package.json` 0.1.1 → **0.1.2**；`npm pack` → `dsh-feishu-0.1.2.tgz`（128920 B / 37 文件 / sha256 `38d9da0a…227d03e8`）；tag `v0.1.2` + GitHub Release（附件同包）；发布说明源在 [`docs/RELEASE-0.1.2.md`](docs/RELEASE-0.1.2.md)；同步更新 `docs/install-for-others.md`、`docs/user-guide.md`、README 的版本号与安装命令。
+仍未做：**未发布到 npm**（`dsh-feishu` 包名属上游，走 npm 需改自有 scope）。
 
 ---
 

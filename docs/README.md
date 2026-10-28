@@ -10,7 +10,8 @@
 | [`feishu-console-setup.md`](./feishu-console-setup.md) | **★ 飞书后台配置全流程（权威）**：八步流程、15 项权限逐条用途与缺失症状、重定向 URL 规则、可用范围、发版、错误码对照表、上线检查清单、不装 DSH 也能做的权限自检 |
 | [`user-guide.md`](./user-guide.md) | **★ 用户指南**：怎么用中文使唤 agent、9 类任务的提示词配方、结果怎么读、安全边界、故障处置、3 个端到端例子 |
 | [`install-for-others.md`](./install-for-others.md) | **★ 给别人用**：装到另一台机器的三条通道、飞书应用配置（15 项权限 + 重定向 URL + 必须发版）、配置项、验收三条、故障对照表 |
-| [`RELEASE-0.1.1.md`](./RELEASE-0.1.1.md) | 发布说明（可直接粘贴到 GitHub Release / npm）：修了什么、升级者要做什么、验证数据、校验值 |
+| [`RELEASE-0.1.2.md`](./RELEASE-0.1.2.md) | 发布说明（可直接粘贴到 GitHub Release）：本版修了设置页锁死（ISSUE-14）、升级者要做什么、验证数据、校验值 |
+| [`RELEASE-0.1.1.md`](./RELEASE-0.1.1.md) | 发布说明（历史）：0.1.1 相对上游 0.1.0 的修复清单、升级步骤、验证数据、校验值 |
 | [`feishu-capabilities.md`](./feishu-capabilities.md) | **★ 功能能力目录**：10 个工具 / 63 个可测单元逐个列作用与所需权限、能力速查表、明确不支持的能力、实测覆盖度 |
 | [`feishu-test-report.md`](./feishu-test-report.md) | **全功能测试报告**：范围/环境/权限、61 条用例矩阵（44 通过 0 失败 7 阻塞 10 跳过）、复现命令、安全护栏、已知风险、变更清单 |
 | [`feishu-issue-fix-log.md`](./feishu-issue-fix-log.md) | **问题排查与修复日志**：ISSUE-01…07，每条含现象/复现/错误码/根因/修复/修改文件/回归/遗留风险 |
