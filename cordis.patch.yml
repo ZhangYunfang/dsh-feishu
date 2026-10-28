@@ -3,7 +3,8 @@
 # This file is the `dsh.bundle.patch` layer of the package. When the plugin is
 # installed as a bundle —
 #
-#   dsh plugin add github:2048lr/dsh-feishu
+#   dsh plugin add github:ZhangYunfang/dsh-feishu    # this branch (fixes + tests)
+#   dsh plugin add github:2048lr/dsh-feishu         # upstream
 #
 # — the CLI appends `dsh-feishu` to the profile's bundle stack, and profile boot
 # merges THIS patch, inserting the plugin row exactly like a hand-written mount

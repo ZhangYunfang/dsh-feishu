@@ -1,5 +1,15 @@
 # dsh-feishu
 
+> **This branch (`ZhangYunfang/dsh-feishu`, v0.1.1) is the maintained adaptation for DeepSeek Harness `0.1.2-alpha.2`.**
+> It keeps upstream's design (no `@deepseek-ai/*` imports, one wire contract) and adds twelve verified fixes —
+> most importantly a user grant that can actually refresh itself, Markdown tables that append, and folders that
+> can be deleted — plus a 62-case live test harness against the real Feishu API.
+>
+> - Install (other machines): [`docs/install-for-others.md`](docs/install-for-others.md)
+> - What it can do, and which scopes each capability needs: [`docs/feishu-capabilities.md`](docs/feishu-capabilities.md)
+> - What changed and how it was verified: [`CHANGELOG.md`](CHANGELOG.md)
+> - Upstream project: <https://github.com/2048lr/dsh-feishu>
+
 English | [中文](README.zh.md)
 
 Deep **Feishu / Lark** integration for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).

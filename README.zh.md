@@ -1,5 +1,15 @@
 # dsh-feishu
 
+> **本分支（`ZhangYunfang/dsh-feishu`，v0.1.1）是针对 DeepSeek Harness `0.1.2-alpha.2` 维护的适配版。**
+> 保留上游设计（不 import `@deepseek-ai/*`、单一 wire 契约），并修掉 12 个已复现问题——
+> 最关键的三个是：用户授权**能真正自我续期**、含表格的 Markdown 能追加、**建出的文件夹能删掉**，
+> 另附 62 条打真飞书接口的测试。
+>
+> - 装到别的机器：[`docs/install-for-others.md`](docs/install-for-others.md)
+> - 能做什么、每项能力要什么权限：[`docs/feishu-capabilities.md`](docs/feishu-capabilities.md)
+> - 改了什么、怎么验的：[`CHANGELOG.md`](CHANGELOG.md)
+> - 上游项目：<https://github.com/2048lr/dsh-feishu>
+
 [English](README.md) | 中文
 
 面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的**飞书 / Lark** 深度接入插件。

@@ -6,6 +6,17 @@
 
 ---
 
+## v0.1.1 · 2026-10-28 · 首个可分发版本（= 下面 v0.1.0-local.3 一轮）
+
+打包发布：`dsh-feishu-0.1.1.tgz`（111K / 35 文件 / sha256 `7a2ee81b…50fc2767`）。
+
+- `package.json`：版本 0.1.0 → **0.1.1**；`repository`/`homepage`/`bugs` 从上游改指本分支（否则别人的 issue 会提错地方）；`files` 纳入安装指南与能力目录
+- `cordis.patch.yml`：安装示例同时给出本分支与上游
+- 新增 [`docs/install-for-others.md`](docs/install-for-others.md)（给别人用）与 [`docs/RELEASE-0.1.1.md`](docs/RELEASE-0.1.1.md)（发布说明）
+- README / README.zh 顶部加本分支说明与文档入口
+- 验证：tarball 解包后 `apply/inject/name` 可 load、10 工具 61 action、15 scope；临时 profile `pnpm add <tgz>` 成功；包内无密钥
+- 未做的事：**未发布到 npm**（本机 `npm whoami` 未登录，且 `dsh-feishu` 这个包名属上游）；**未建 GitHub Release**（本机没有 `gh`）——发布说明已写好，两种通道都可由仓库主人一键完成
+
 ## v0.1.0-local.3 · 2026-10-28 · 全功能测试与续期缺陷闭环
 
 ### 新增：真接口测试基建

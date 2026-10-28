@@ -1,7 +1,7 @@
 {
   "name": "dsh-feishu",
-  "version": "0.1.0",
-  "description": "Deep Feishu / Lark integration for DeepSeek Harness: create Bitable apps, docs, sheets, wiki nodes, uploads and messages in the user's own cloud workspace, plus a user OAuth flow.",
+  "version": "0.1.1",
+  "description": "Feishu / Lark integration for DeepSeek Harness: 10 agent tools covering Bitable, docs, sheets, wiki, dashboards, drive and messages in the user own cloud workspace, plus a user OAuth flow that keeps itself refreshed.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -17,6 +17,9 @@
     "lib",
     "skill",
     "scripts",
+    "docs/install-for-others.md",
+    "docs/feishu-capabilities.md",
+    "CHANGELOG.md",
     "README.md",
     "README.zh.md",
     "LICENSE",
@@ -37,23 +40,24 @@
   },
   "scripts": {
     "test": "node test/run-tests.mjs",
+    "test:live": "node test/live/feishu-live.mjs",
+    "test:live:list": "node test/live/feishu-live.mjs --list",
     "install:profile": "pwsh -File scripts/install.ps1",
     "uninstall:profile": "pwsh -File scripts/uninstall.ps1",
-    "test:live": "node test/live/feishu-live.mjs",
-    "test:live:list": "node test/live/feishu-live.mjs --list"
+    "pack:check": "npm pack --dry-run"
   },
   "engines": {
     "node": ">=20"
   },
   "license": "MIT",
-  "author": "Run Liu",
+  "author": "Run Liu (upstream) — adapted by ZhangYunfang",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/2048lr/dsh-feishu.git"
+    "url": "git+https://github.com/ZhangYunfang/dsh-feishu.git"
   },
-  "homepage": "https://github.com/2048lr/dsh-feishu#readme",
+  "homepage": "https://github.com/ZhangYunfang/dsh-feishu#readme",
   "bugs": {
-    "url": "https://github.com/2048lr/dsh-feishu/issues"
+    "url": "https://github.com/ZhangYunfang/dsh-feishu/issues"
   },
   "keywords": [
     "dsh",
@@ -64,5 +68,11 @@
     "多维表格",
     "飞书",
     "deepseek-harness"
+  ],
+  "contributors": [
+    {
+      "name": "ZhangYunfang",
+      "url": "https://github.com/ZhangYunfang"
+    }
   ]
 }
