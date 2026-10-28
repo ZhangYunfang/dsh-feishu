@@ -1732,6 +1732,22 @@ async function main() {
       await rm(dir, { recursive: true, force: true });
     }
   });
+  await test('finds the patch file when the base URL names the profile directory', async () => {
+    // The live failure: a link: install sees no DSH_* variable inside the host
+    // process, and the Cordis context base URL points at the profile root.
+    // Taking dirname() of that offered .dsh/profiles/cordis.patch.yml and its
+    // ancestors, but never the profile's own file.
+    const fixture = await patchFixture();
+    try {
+      const profileDir = dirname(fixture.file);
+      equal(entryMod.resolvePatchFile({}, { baseUrl: 'file://' + profileDir.split('\\').join('/'), env: {} }), fixture.file);
+      equal(entryMod.resolvePatchFile({}, { baseUrl: profileDir, env: {} }), fixture.file);
+      const candidates = entryMod.patchFileCandidates({}, { baseUrl: profileDir, env: {} });
+      equal(candidates[0], fixture.file, 'the profile file must be the first candidate');
+    } finally {
+      await rm(fixture.dir, { recursive: true, force: true });
+    }
+  });
   await test('reports the locations it tried when it cannot find the file', () => {
     const read = entryMod.readEntryFile(undefined, ['C:\\a\\profiles\\x\\cordis.patch.yml', 'D:\\b\\cordis.patch.yml']);
     equal(read.ok, false);
@@ -1752,6 +1768,33 @@ async function main() {
     equal(read.found, true);
     equal(read.values.appId, 'cli_manual');
     equal(read.block.mode, 'scan');
+  });
+  await test('finds a hand-written entry that only targets the loader id', () => {
+    // No `name:` line, so this entry is only recognisable by its id. Missing it
+    // used to append a second block for the same id, and the later entry then
+    // replaced the whole configuration of the earlier one.
+    const text = ['# hand written override', '- id: feishu', '  config:', "    appId: 'cli_id'", '', '- id: other', '  name: other-plugin', ''].join('\n');
+    const read = entryMod.readEntry(text);
+    equal(read.found, true);
+    equal(read.values.appId, 'cli_id');
+    equal(read.block.mode, 'scan');
+  });
+  await test('a save never leaves two entries for the same loader id', async () => {
+    const fixture = await patchFixture(['# hand written override', '- id: feishu', '  config:', "    appId: 'cli_id'", "    patchFilePath: '/nowhere/profiles/test/cordis.patch.yml'", '', '- id: other', '  name: other-plugin', ''].join('\n'));
+    try {
+      const outcome = entryMod.writeEntry(fixture.file, { appId: 'cli_saved' });
+      equal(outcome.ok, true);
+      const text = await readFile(fixture.file, 'utf8');
+      const occurrences = text.split('\n').filter((line) => /^\s*-?\s*id:\s*'?feishu'?\s*$/u.test(line)).length;
+      equal(occurrences, 1, 'exactly one entry may target the loader id');
+      assert(!text.includes('- insert:'), 'an id-targeted entry must stay an override: ' + text);
+      assert(text.includes('other-plugin'), 'the neighbouring entry must survive');
+      const reread = entryMod.readEntry(text);
+      equal(reread.values.appId, 'cli_saved');
+      equal(reread.values.patchFilePath, fixture.file, 'the escape hatch must keep pointing at the file that was written');
+    } finally {
+      await rm(fixture.dir, { recursive: true, force: true });
+    }
   });
   await test('rewrites the entry, preserving unmanaged keys and other entries', async () => {
     const fixture = await patchFixture();

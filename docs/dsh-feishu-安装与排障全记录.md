@@ -32,19 +32,20 @@
 | 4 | `cordis.patch.yml` 缩进错误，`appId` 没生效 | 配置 |
 | 5 | 本地鉴权插件 `SameSite=Strict` 导致 OAuth 回调死循环 | 第三方插件 |
 | 6 | 飞书权限分「应用 / 用户」两层，后台开权限后用户 grant 不自动扩 | 概念 |
-| 7 | 设置页报「配置文件不可写」：`patchFilePath` 未配，`link:` 安装时定位不到 profile 的 patch 文件 | 配置 |
-| 8 | 自动续期后 refresh token 丢失（`lib/identity.js` 的连坐守卫） | **代码（未修，见 §六 风险 5）** |
+| 7 | 设置页报「配置文件不可写」：`patchFilePath` 未配，`link:` 安装时定位不到 profile 的 patch 文件 | 配置（`patchFilePath` 应急口） |
+| 8 | 自动续期后 refresh token 丢失（`lib/identity.js` 的连坐守卫） | **代码（已修，`41b91fe`，见 §六 风险 4）** |
+| 9 | 设置页保存过一次后**自己把 `patchFilePath` 覆盖掉** → 永久锁死（同一 id 两条顶层条目，后者整块替换 `config`） | **代码（已修，见 §六 风险 6）** |
 
-当前状态（实测，2026-10-27）：
+当前状态（实测，2026-10-28）：
 
 ```
-user.authorized      : true
-user.scope           : auth:user.id:read bitable:app contact:user.base:readonly
-                       docx:document drive:drive im:message im:resource
-                       sheets:spreadsheet wiki:wiki        ← offline_access 已因缺陷 8 丢失
-user.refreshable     : false        ← 缺陷 8 的直接后果，约 2 小时后需重新授权
-feishu_drive(用户身份) : found 38 item(s) in the drive root
-配置可写             : patch.file = /Users/zyf/.dsh/profiles/web/cordis.patch.yml（坑 7 已修）
+user.authorized          : true
+user.scope               : 16 项，含 offline_access（缺陷 8 已修，grant 已重授）
+user.refreshable         : true          ← 缺陷 8 的判据，连续两次 refresh 后仍为 true
+user.refreshExpiresInDays: 7
+feishu_drive(用户身份)   : found 38 item(s) in the drive root
+配置可写                 : patch.file = /Users/zyf/.dsh/profiles/web/cordis.patch.yml
+                           entryFound = true · readable = true · error = null（缺陷 9 已修）
 ```
 
 ---
@@ -898,7 +899,68 @@ cd /Users/zyf/Project/DSH_WorkSpace/dsh-feishu && npm test    # → 103 passed, 
 | 全功能自测的 6 处接口修复 | `5ec70f6` | ✅ 已提交并推送 |
 | refresh token 连坐守卫（风险 4） | `41b91fe` | ✅ 已提交并推送 |
 
-踩坑提醒：坑 3 的修复**必须**留在代码里 —— 丢了它，`feishu_auth status` 会在授权后重新报 `value is not lossless JSON`。改完代码记得跑 `npm test`（期望 `103 passed, 0 failed`）再提交；**改完代码还要重启 dsh-web**，否则线上跑的还是进程内存里的旧逻辑。
+踩坑提醒：坑 3 的修复**必须**留在代码里 —— 丢了它，`feishu_auth status` 会在授权后重新报 `value is not lossless JSON`。改完代码记得跑 `npm test`（期望 `112 passed, 0 failed`）再提交；**改完代码还要重启 dsh-web**，否则线上跑的还是进程内存里的旧逻辑。
+
+### 风险 6 · 设置页会把自己的 `patchFilePath` 覆盖掉（已修复 2026-10-28）
+
+**症状**：设置页保存过一次配置之后，从某次起再打开设置页就报
+
+```
+配置文件不可写：the profile patch file could not be located. Looked in:
+  /Users/zyf/.dsh/profiles/cordis.patch.yml
+  /Users/zyf/.dsh/cordis.patch.yml
+  /Users/zyf/cordis.patch.yml
+  /Users/cordis.patch.yml
+```
+
+候选里**没有** `profiles/web/cordis.patch.yml`，重启也修不好 —— 属于**永久锁死**。
+
+**根因（两层，缺一不可）**：
+
+1. **写入口：同一个 id 出现了两条顶层条目。** 当时的 `cordis.patch.yml` 长这样：
+
+   ```yaml
+   - id: feishu                    # 手写：只有 appId + patchFilePath
+     config:
+       patchFilePath: '/Users/zyf/.dsh/profiles/web/cordis.patch.yml'
+
+   # >>> dsh-feishu (managed ...)  ← 设置页保存时追加的
+   - id: feishu                    # 有 name 与全量 config，但没有 patchFilePath
+     name: dsh-feishu
+     config:
+       appId: 'cli_...'
+   ```
+
+   `lib/entry-config.js` 的 `locateBlock()` 只认「标记区」和「带 `name: dsh-feishu` 的条目」，**认不出只有 `id: feishu` 的手写条目** → 保存时走「追加」分支 → 同一个 id 两条。DSH 按顺序应用 patch，**后一条整块替换前一条的 `config`**，`patchFilePath` 就此消失；而该字段**不允许从浏览器写入**（`EDITABLE_FIELDS` 里没有它），设置页无法自愈。
+
+2. **读入口：`ctx.baseUrl` 被当成文件路径处理。** `patchFileCandidates()` 拿到 `file:///…/.dsh/profiles/web`（**指向 profile 目录本身**）后调用 `dirname()`，等于往上跳一级，于是从 `.dsh/profiles/` 开始往上找，永远不会把 `profiles/web/cordis.patch.yml` 放进候选 —— 错误信息里那四个 `profiles/cordis.patch.yml`… 就是这么来的。
+
+**修复**（`lib/entry-config.js`，一次提交）：
+
+| 位置 | 改动 | 为什么 |
+|---|---|---|
+| `anchorDirectory()` | 锚点是**已存在的目录**时原样使用，不再 `dirname()` | `ctx.baseUrl` 指向 profile 根时，候选表里才会有 `<profile>/cordis.patch.yml`；`link:` 安装没有 `DSH_PROFILE_DIR`，这条就是唯一活路 |
+| `locateBlock()` + 新增 `locateIdOnlyBlock()` | 认不出 `name:` 时再按 `id: feishu` 查找；`insert:` 列表跳过（改写会丢同级条目） | 绝不追加第二条同 id 条目 |
+| `writeEntry()` + 新增 `locatedIsOverride()` | 每次写入都补 `merged.patchFilePath = file`；块的形式跟随被替换的块，而不只看 bundle 清单 | 应急口自我修复；手写 override 不会被改写成 `insert:` 而重复定义 id |
+
+**判据（本机实测）**：
+
+```bash
+cd ~/Project/DSH_WorkSpace/dsh-feishu
+node test/run-tests.mjs      # 112 passed, 0 failed（新增 3 条回归：baseUrl 指目录 / id-only 条目 / 不留两条同 id）
+
+# 模拟「配置文件里已经没有 patchFilePath」的全新安装：仍能命中真实文件
+node --input-type=module -e "import {resolvePatchFile} from './lib/entry-config.js';
+console.log(resolvePatchFile({}, { baseUrl: '/Users/zyf/.dsh/profiles/web', env: {} }))"
+# → /Users/zyf/.dsh/profiles/web/cordis.patch.yml
+
+# 线上实测（patchReload: live，改 yaml 立即生效，不用重启）
+curl -s --noproxy '*' -L -c /tmp/jar -b /tmp/jar http://127.0.0.1:3080/api/feishu/config \
+  | python3 -c "import json,sys;print(json.load(sys.stdin)['data']['patch'])"
+# → {'file': '/Users/zyf/.dsh/profiles/web/cordis.patch.yml', 'entryFound': True, 'readable': True, 'error': None}
+```
+
+**给别的安装者的结论**：profile 里出现两条同 id 条目就是这个坑；改法是把 `patchFilePath` 写进唯一那条 managed 块（或删掉手写那条让设置页重写）。插件侧已修，之后每次保存都会保持单条并把 `patchFilePath` 补成当前文件路径。**本次修复改的是 `lib/`，所以要重启 dsh-web 才生效**；yaml 的修复则当场生效。
 
 ---
 

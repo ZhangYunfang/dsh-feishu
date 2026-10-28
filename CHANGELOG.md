@@ -6,6 +6,23 @@
 
 ---
 
+## v0.1.1+（未发版） · 2026-10-28 · 设置页把自己锁死的两个定位缺陷
+
+用户侧症状：设置页保存过一次配置后，此后每次打开都报「配置文件不可写：the profile patch file could not be located」，重启无效。查下来是**写入口与读入口各有一个缺陷**，任一存在都会让 `link:` 安装永远找不到自己的 `cordis.patch.yml`。
+
+| 位置 | 改动 | 判据 |
+|---|---|---|
+| `lib/entry-config.js` · `anchorDirectory()` | 锚点是**已存在的目录**时原样使用，不再 `dirname()`（Cordis 的 `ctx.baseUrl` 正是 `<profile>` 目录） | `resolvePatchFile({}, { baseUrl: '<profile>', env: {} })` 命中真实文件 |
+| `lib/entry-config.js` · `locateBlock()` + 新增 `locateIdOnlyBlock()` | 认不出 `name:` 时按 `id: feishu` 查找；`insert:` 列表跳过 | 手写 id-only 条目保存后**只剩一条**同 id 条目（此前会追加第二条，后一条整块覆盖前一条的 `config`） |
+| `lib/entry-config.js` · `writeEntry()` + 新增 `locatedIsOverride()` | 每次写入补 `merged.patchFilePath = file`；块形式跟随被替换的块 | 保存后 `patchFilePath` 仍在，且手写 override 不会被改写成 `insert:` |
+| `test/run-tests.mjs` | 新增 3 条回归（baseUrl 指目录 / id-only 条目 / 不留两条同 id） | `node test/run-tests.mjs` → **112 passed, 0 failed**（原 109） |
+| `docs/dsh-feishu-安装与排障全记录.md` | §一 缺陷表补第 9 条、状态块刷新为 2026-10-28 实测值；§六 新增「风险 6」全过程 | 线上 `GET /api/feishu/config` → `patch.file` 非 null、`entryFound: true`、`error: null` |
+
+线上验证：`patchReload: live`，修好 yaml 当场生效（不用重启）；本修复改的是 `lib/`，需重启 dsh-web 才加载。
+未做的事：**没有发新版本、也没重打 tgz** —— 版本号仍是 0.1.1，等下次发版一并带出。
+
+---
+
 ## v0.1.1 · 2026-10-28 · 首个可分发版本（= 下面 v0.1.0-local.3 一轮）
 
 打包发布：`dsh-feishu-0.1.1.tgz`（127084 B / 37 文件 / sha256 `ff07e4a2…2d99716f`）。

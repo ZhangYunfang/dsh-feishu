@@ -216,6 +216,23 @@
 
 ---
 
+## ISSUE-14 · 设置页保存过一次后把自己锁死：`patchFilePath` 被自己覆盖（`lib/entry-config.js`）
+
+| 项 | 内容 |
+|---|---|
+| **功能与用例** | 设置页（`GET`/`POST /api/feishu/config`）保存一次配置 |
+| **现象** | 首次保存成功后，此后每次保存/打开都报 `配置文件不可写：the profile patch file could not be located. Looked in: /Users/zyf/.dsh/profiles/cordis.patch.yml, /Users/zyf/.dsh/cordis.patch.yml, /Users/zyf/cordis.patch.yml, /Users/cordis.patch.yml`；候选里没有 `profiles/web/cordis.patch.yml`；**重启无效**（重启后 `config` 里已经没有 `patchFilePath`，问题只是在磁盘上固化） |
+| **复现** | ①profile 的 `cordis.patch.yml` 里手写一条 `- id: feishu` / `config: {appId, patchFilePath}`；②在设置页点保存 → 插件追加第二条同 id 的 managed 块（带 `name` 与全量 config，但无 `patchFilePath`）；③重启 dsh-web → 之后永久失败 |
+| **环境** | `link:` 安装（模块在 `~/Project/DSH_WorkSpace/dsh-feishu`）；DSH `0.1.2-alpha.2`；`patchReload: live` |
+| **关键日志** | `GET /api/feishu/config` → `"patch": {"file": null, "entryFound": false, "readable": false, "error": "the profile patch file could not be located. Looked in: …"}` |
+| **根因** | 两个缺陷叠加：①**写入口**——`locateBlock()` 只认标记区和 `name: dsh-feishu`，认不出只有 `id: feishu` 的手写条目，于是走「追加」分支，同一个 id 出现两条顶层条目；DSH 按顺序应用 patch，**后一条整块替换前一条的 `config`**，`patchFilePath` 消失，而该字段不在 `EDITABLE_FIELDS` 里（不许浏览器写），设置页无法自愈；②**读入口**——`patchFileCandidates()` 把 Cordis 的 `ctx.baseUrl`（`file:///…/.dsh/profiles/web`，**是目录**）当文件去 `dirname()`，往上跳一级后从 `.dsh/profiles/` 开始找，永远不会把 `<profile>/cordis.patch.yml` 放进候选 |
+| **修复** | ①`anchorDirectory()`：锚点是已存在目录时原样使用；②新增 `locateIdOnlyBlock()`：按 `id: feishu` 兜底查找（`insert:` 列表跳过）；③`writeEntry()` 每次写入补 `merged.patchFilePath = file`；④新增 `locatedIsOverride()`：块形式跟随被替换的块，避免把手写 override 改写成 `insert:` 而重复定义 id |
+| **修改文件** | `lib/entry-config.js`、`test/run-tests.mjs`、`docs/dsh-feishu-安装与排障全记录.md`（风险 6）、`CHANGELOG.md` |
+| **回归** | 离线：新增 3 条用例（baseUrl 指目录 / id-only 条目 / 不留两条同 id）→ **112 passed, 0 failed**（原 109）。线上：修好 yaml 后 `patch.file` 立刻非 null（`patchReload: live`），`entryFound: true`、`readable: true`、`error: null` |
+| **遗留风险** | 修复在 `lib/` 里，**要重启 dsh-web 才加载**；版本号仍是 0.1.1，未重打 tgz。其他安装者若已踩坑，需手工把 `patchFilePath` 写进唯一那条 managed 块（或删掉手写条目让设置页重写） |
+
+---
+
 ## 汇总
 
 | 编号 | 一句话 | 状态 | 提交 |
@@ -233,3 +250,4 @@
 | ISSUE-11 | 工具失败的 hint/错误码被吞 | 已修（需重启生效） | 本次提交 |
 | ISSUE-12 | 运行器消耗了一次性 refresh token | 已修（用例改非破坏性） | `c201591` |
 | ISSUE-13 | `create_app` 建表失败会丢 Base token | 已修 | 本次提交 |
+| ISSUE-14 | 设置页保存后自己覆盖 `patchFilePath`、永久锁死 | 已修（需重启生效） | 本次提交 |
