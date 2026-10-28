@@ -766,20 +766,39 @@ App Secret  →  ~/.dsh/.credentials.yaml 的 refs.FEISHU_APP_SECRET（0600）
 - 重装依赖（`pnpm install` / 删除 `node_modules` 后重装）
 - 升级 `dsh-web-startup-auth`
 
-**恢复方法**：
+**恢复方法**（2026-10-28 实测，`dsh-web-startup-auth@0.1.9`）：
+
+作者已经把**会话 cookie** 改成 Lax（`lib/auth.js:113/116`），但**浏览器 cookie 仍是 Strict**（`lib/auth.js:389` 签发、`:416` 清除）——只改了一半，所以任何第三方 OAuth 回调照样死循环。要动的就是这两处（`src/auth.ts:469/495` 同步改）：
 
 ```bash
 cd ~/.dsh/profiles/web/node_modules/dsh-web-startup-auth
-grep -n "SameSite" lib/auth.js          # 确认是否回到 Strict
-python3 -c "
-import pathlib
-p = pathlib.Path('lib/auth.js'); s = p.read_text()
-p.write_text(s.replace('HttpOnly; SameSite=Strict\`', 'HttpOnly; SameSite=Lax\`'))
-print('已重新打补丁')"
+cp -p lib/auth.js "lib/auth.js.bak-$(date +%Y%m%d-%H%M%S)"
+cp -p src/auth.ts "src/auth.ts.bak-$(date +%Y%m%d-%H%M%S)"
+python3 - <<'PY'
+from pathlib import Path
+for path in ('lib/auth.js', 'src/auth.ts'):
+    p = Path(path); s = p.read_text(encoding='utf-8')
+    n = s.count('SameSite=Strict')
+    p.write_text(s.replace('SameSite=Strict', 'SameSite=Lax'), encoding='utf-8')
+    print(path, '改为 Lax 的处数 =', n)      # 期望各 2
+PY
 supervisorctl restart dsh-web
 ```
 
-**根治**：向 `dsh-web-startup-auth`（`github:GDWhisper/dsh-web-startup-auth`）提 issue —— 浏览器 cookie 应使用 `SameSite=Lax`，否则任何第三方 OAuth 回调都会死循环。
+**判据（两条都要看，缺一不可）**：
+
+```bash
+# ① 补丁是否真进了内存：回包的 Set-Cookie 必须是 SameSite=Lax
+curl -si --noproxy '*' 'http://127.0.0.1:3080/api/feishu/oauth/callback?code=x&state=x' | grep -i set-cookie
+#   Strict → 补丁没生效（多半是没重启）；Lax → 生效
+# ② 浏览器里真走一遍授权：落地页应显示 "Feishu is connected / Authorized as …"
+```
+
+⚠️ **顺序陷阱（踩过）**：`supervisorctl restart dsh-web` 会清空进程内的 OAuth `state` 表 —— **重启前**生成的授权链接在重启后全部作废（回跳报 `Authorization state mismatch`）。正确顺序永远是 **先重启、再生成链接**。
+
+**应急通道**：浏览器仍打不开回调时，把回跳 URL 里的 `code` 交给 agent，用 `feishu_auth action=complete code=<code>` 直接兑换 —— 绕开浏览器整条路径，实测可用（code 有效期约 10 分钟，一次性）。
+
+**根治**：向 `dsh-web-startup-auth`（`github:GDWhisper/dsh-web-startup-auth`）提 issue —— **浏览器 cookie**（`browserCookieAttributes`）也应使用 `SameSite=Lax`。该插件 0.1.9 只把会话 cookie 改成了 Lax，浏览器 cookie 仍是 Strict，所以任何第三方 OAuth 回调都会死循环。
 
 ### 风险 2 · App Secret 已出现在会话日志
 

@@ -233,6 +233,22 @@
 
 ---
 
+## ISSUE-15 · 解除授权后重授权：回跳死循环 + 新 grant 丢 `offline_access`（宿主插件与本机流程，非 dsh-feishu 代码缺陷）
+
+| 项 | 内容 |
+|---|---|
+| **功能与用例** | 用户 OAuth 重新授权（解除授权 → 点授权链接 → 浏览器回跳 `/api/feishu/oauth/callback`） |
+| **现象** | ①浏览器报 `ERR_TOO_MANY_REDIRECTS`（"127.0.0.1 将您重定向的次数过多"）；②改用 `complete` 兑换成功后，`status` 显示 `refreshable: false`、scope 只有 15 项（**缺 `offline_access`**）→ 约 2 小时后必然失效 |
+| **复现** | `curl -si --noproxy '*' 'http://127.0.0.1:3080/api/feishu/oauth/callback?code=x&state=x'` → `303` + `location` 指回自身 + `Set-Cookie: dsh-auth-…; HttpOnly; SameSite=Strict` |
+| **环境** | macOS；DSH `0.1.2-alpha.2`；`dsh-web-startup-auth@0.1.9`；`dsh-feishu` 0.1.2 |
+| **根因** | ①**宿主插件**：`dsh-web-startup-auth` 的**浏览器 cookie** 仍是 `SameSite=Strict`（会话 cookie 已是 Lax —— 作者只改了一半）。飞书从 `accounts.feishu.cn` 跳回 `127.0.0.1` 属**跨站顶层导航**，Strict cookie 不会被发送 → 闸门每次判定「没 cookie」→ 再发一张再 303 → 浏览器报重定向过多。**与用户清 Cookie 无关**。②**授权范围**：新 grant 缺 `offline_access` —— 授权链接里已带该 scope，属应用侧权限/发版或同意页未含该项，与插件代码无关；重授权后已恢复 |
+| **处置** | ①先用 `feishu_auth action=complete code=<code>` 兑换，立刻恢复可用（绕开浏览器）；②把 `lib/auth.js:389/416` + `src/auth.ts:469/495` 的 `SameSite=Strict` 改 `Lax`（带备份），`supervisorctl restart dsh-web`；③**重启之后**再生成授权链接（旧 state 随重启作废）→ 浏览器一次通过，落地页 `Feishu is connected` |
+| **修改文件** | `~/.dsh/profiles/web/node_modules/dsh-web-startup-auth/{lib/auth.js,src/auth.ts}`（本机补丁，不在本仓库）；本仓库更新 `docs/dsh-feishu-安装与排障全记录.md` §六 风险 1 与本文 |
+| **回归** | ①`curl -si` 回包 `SameSite=Lax` ✓ ②浏览器回跳成功页 `Feishu is connected` ✓ ③`feishu_auth status` → `refreshable: true`、scope **16 项含 `offline_access`**、`refreshExpiresInDays: 7` ✓ ④连跑两次 `feishu_auth refresh` 均成功、`refreshable` 始终 `true`、`expiresAt` 每次前进 ✓ |
+| **遗留风险** | 补丁在 `node_modules` 里，**升级或重装 `dsh-web-startup-auth` 会被覆盖**（见 §六 风险 1 的判据与恢复命令）；根治需要上游把浏览器 cookie 也改成 Lax |
+
+---
+
 ## 汇总
 
 | 编号 | 一句话 | 状态 | 提交 |
@@ -251,3 +267,4 @@
 | ISSUE-12 | 运行器消耗了一次性 refresh token | 已修（用例改非破坏性） | `c201591` |
 | ISSUE-13 | `create_app` 建表失败会丢 Base token | 已修 | 本次提交 |
 | ISSUE-14 | 设置页保存后自己覆盖 `patchFilePath`、永久锁死 | 已修（需重启生效） | `59b821e` |
+| ISSUE-15 | 重授权回跳死循环 + 新 grant 丢 offline_access | 已处置（宿主补丁 + 重新授权） | 见正文 |
