@@ -690,6 +690,127 @@ async function main() {
     const token = await identity.userToken();
     equal(token.accessToken, 'u2');
     equal(refreshes, 1);
+    // Feishu refresh tokens are single-use, so a reply that carries a new one has
+    // to replace the stored value; keeping the old one would fail the next refresh
+    // with 20073 "already been used".
+    const rotated = store.records.get(identityMod.USER_TOKEN_RECORD_KEY).payload;
+    equal(rotated.refreshToken, 'r2', 'a rotated refresh token must be stored');
+    assert(rotated.refreshExpiresAt > Date.now(), 'the rotated expiry must be stored too');
+  });
+  await test('keeps the stored refresh token when a refresh reply omits a new one', async () => {
+    // The secret deliberately lives in the credential store, not in
+    // config.appSecret: the old carry-over was gated on config.appSecret being
+    // non-empty, so only this shape reproduces the lost-grant failure.
+    const mock = mockFeishu();
+    let refreshCalls = 0;
+    mock.route('POST', '/open-apis/authen/v2/oauth/token', () => {
+      refreshCalls += 1;
+      // Feishu rotates the refresh token only sometimes. This reply carries
+      // none, which used to wipe the only credential able to refresh again.
+      return { body: { code: 0, access_token: 'u-next', expires_in: 7200 } };
+    });
+    const store = fakeCredentials();
+    store.refs.set('FEISHU_APP_SECRET', 'secret-from-store');
+    store.records.set(identityMod.USER_TOKEN_RECORD_KEY, {
+      kind: 'grant',
+      payload: {
+        accessToken: 'stale',
+        refreshToken: 'r1',
+        expiresAt: Date.now() - 1000,
+        refreshExpiresAt: Date.now() + 1000000,
+        scope: 'offline_access drive:drive',
+        openId: 'ou_1',
+        name: 'Tester',
+      },
+    });
+    const config = configMod.normalizeConfig({ appId: 'cli_1' });
+    equal(config.appSecret, '', 'this test only means something with no config-level secret');
+    const identity = identityMod.createIdentity({ config, credentials: store, fetchImpl: mock.fetchImpl });
+    await identity.userToken();
+    const saved = store.records.get(identityMod.USER_TOKEN_RECORD_KEY).payload;
+    equal(refreshCalls, 1, 'exactly one refresh should have happened');
+    equal(saved.accessToken, 'u-next');
+    equal(saved.refreshToken, 'r1', 'the previous refresh token must survive a reply that omits a new one');
+    assert(saved.refreshExpiresAt > 0, 'the previous refresh expiry must be carried over too');
+    equal(saved.scope, 'offline_access drive:drive', 'an omitted scope is not a revocation and must be carried over');
+    const state = await identity.userState();
+    equal(state.refreshable, true, 'the grant must remain refreshable after the rotation');
+  });
+  await test('keeps a rotated grant usable in memory when the credential write fails', async () => {
+    // A refresh token is single-use: if writing the rotated record fails and the
+    // failure escapes, the caller sees an error while the only live refresh token
+    // has nowhere to go. The exchange must survive the failed write, and the
+    // in-memory copy must still refresh again.
+    const mock = mockFeishu();
+    let refreshCalls = 0;
+    mock.route('POST', '/open-apis/authen/v2/oauth/token', () => {
+      refreshCalls += 1;
+      return { body: { code: 0, access_token: 'u-' + refreshCalls, expires_in: 7200, refresh_token: 'r-' + refreshCalls, refresh_token_expires_in: 2592000 } };
+    });
+    let clock = Date.now();
+    const store = fakeCredentials();
+    store.refs.set('FEISHU_APP_SECRET', 'secret-from-store');
+    // The stored grant is readable but unwritable: a read-only store, which is what
+    // a read-only / locked-down credentials file looks like at runtime.
+    store.readRecord = async () => ({
+      kind: 'grant',
+      payload: { accessToken: 'stale', refreshToken: 'r0', expiresAt: clock - 1000, refreshExpiresAt: 0, scope: 'x' },
+    });
+    store.modifyRecord = async () => {
+      throw new Error('the store is read-only');
+    };
+    const config = configMod.normalizeConfig({ appId: 'cli_1' });
+    const warnings = [];
+    const identity = identityMod.createIdentity({
+      config,
+      credentials: store,
+      fetchImpl: mock.fetchImpl,
+      now: () => clock,
+      logger: { warn: (line) => warnings.push(line) },
+    });
+    const first = await identity.userToken();
+    equal(first.accessToken, 'u-1', 'the refresh should succeed even though the record could not be written');
+    assert(warnings.some((line) => line.includes('survives only in this process')), 'the degraded persistence must be reported');
+    clock += 7300000;
+    const second = await identity.userToken();
+    equal(second.accessToken, 'u-2', 'the in-memory refresh token must still work after the failed write');
+    equal(refreshCalls, 2);
+  });
+  await test('reports the refresh lifetime without inventing one', async () => {
+    const make = (payload) => {
+      const store = fakeCredentials();
+      store.records.set(identityMod.USER_TOKEN_RECORD_KEY, { kind: 'grant', payload });
+      return identityMod.createIdentity({ config: configMod.normalizeConfig({ appId: 'cli_1' }), credentials: store });
+    };
+    const known = await make({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 1000, refreshExpiresAt: Date.now() + 3 * 86400000, scope: 'x' }).userState();
+    equal(known.refreshExpiresInDays, 3, 'a known refresh lifetime should be reported in days');
+    const unknown = await make({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 1000, refreshExpiresAt: 0 }).userState();
+    assert(!('refreshExpiresInDays' in unknown), 'an unknown refresh lifetime must stay absent, not become zero');
+    // Tool results have to be lossless JSON, which an undefined-valued key is not.
+    equal(JSON.stringify(unknown), JSON.stringify(JSON.parse(JSON.stringify(unknown))));
+  });
+  await test('surfaces the refresh failure code and its remediation hint', async () => {
+    // The token endpoint reports failures as {code, error, error_description}. The
+    // code selects the hint, so it must survive into the error instead of being
+    // dropped with the prose.
+    const mock = mockFeishu();
+    mock.route('POST', '/open-apis/authen/v2/oauth/token', () => ({
+      status: 400,
+      body: { code: 20073, error: 'invalid_grant', error_description: 'The refresh token has been used.' },
+    }));
+    const store = fakeCredentials();
+    store.refs.set('FEISHU_APP_SECRET', 'secret-from-store');
+    store.records.set(identityMod.USER_TOKEN_RECORD_KEY, {
+      kind: 'grant',
+      payload: { accessToken: 'stale', refreshToken: 'r1', expiresAt: Date.now() - 1000, refreshExpiresAt: Date.now() + 1000000, scope: 'x' },
+    });
+    const config = configMod.normalizeConfig({ appId: 'cli_1' });
+    const identity = identityMod.createIdentity({ config, credentials: store, fetchImpl: mock.fetchImpl });
+    const error = await rejects(() => identity.userToken(), 'has been used');
+    equal(error.code, 20073);
+    assert(String(error.hint).includes('authorize_url'), 'a used refresh token must point at re-authorization');
+    const state = await identity.userState();
+    equal(state.refreshable, true, 'a failed refresh must leave the stored grant alone');
   });
   await test('reports the app identity and warns when auto has no grant', async () => {
     const mock = mockFeishu();
