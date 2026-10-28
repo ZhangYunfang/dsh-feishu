@@ -246,6 +246,7 @@
 | **修改文件** | `~/.dsh/profiles/web/node_modules/dsh-web-startup-auth/{lib/auth.js,src/auth.ts}`（本机补丁，不在本仓库）；本仓库更新 `docs/dsh-feishu-安装与排障全记录.md` §六 风险 1 与本文 |
 | **回归** | ①`curl -si` 回包 `SameSite=Lax` ✓ ②浏览器回跳成功页 `Feishu is connected` ✓ ③`feishu_auth status` → `refreshable: true`、scope **16 项含 `offline_access`**、`refreshExpiresInDays: 7` ✓ ④连跑两次 `feishu_auth refresh` 均成功、`refreshable` 始终 `true`、`expiresAt` 每次前进 ✓ |
 | **遗留风险** | 补丁在 `node_modules` 里，**升级或重装 `dsh-web-startup-auth` 会被覆盖**（见 §六 风险 1 的判据与恢复命令）；根治需要上游把浏览器 cookie 也改成 Lax |
+| **后续加固** | **0.1.3 起**插件把这两件事做成了当场信号：`authorize_url` 的 `nextStep` 明确给出 `complete` 兜底路径；`complete` 与 OAuth 回调页在 grant 缺 `offline_access` 时直接告警「到期即失效」（`lib/tools/auth.js`、`lib/routes.js`，回归用例见 `test/run-tests.mjs`） |
 
 ---
 
@@ -267,4 +268,4 @@
 | ISSUE-12 | 运行器消耗了一次性 refresh token | 已修（用例改非破坏性） | `c201591` |
 | ISSUE-13 | `create_app` 建表失败会丢 Base token | 已修 | 本次提交 |
 | ISSUE-14 | 设置页保存后自己覆盖 `patchFilePath`、永久锁死 | 已修（需重启生效） | `59b821e` |
-| ISSUE-15 | 重授权回跳死循环 + 新 grant 丢 offline_access | 已处置（宿主补丁 + 重新授权） | 见正文 |
+| ISSUE-15 | 重授权回跳死循环 + 新 grant 丢 offline_access | 已处置（宿主补丁 + 重新授权），0.1.3 起当场告警 | v0.1.3 |

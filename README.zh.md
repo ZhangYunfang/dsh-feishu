@@ -1,6 +1,6 @@
 # dsh-feishu
 
-> **本分支（`ZhangYunfang/dsh-feishu`，v0.1.2）是针对 DeepSeek Harness `0.1.2-alpha.2` 维护的适配版。**
+> **本分支（`ZhangYunfang/dsh-feishu`，v0.1.3）是针对 DeepSeek Harness `0.1.2-alpha.2` 维护的适配版。**
 > 保留上游设计（不 import `@deepseek-ai/*`、单一 wire 契约），并修掉 12 个已复现问题——
 > 最关键的三个是：用户授权**能真正自我续期**、含表格的 Markdown 能追加、**建出的文件夹能删掉**，
 > 另附 62 条打真飞书接口的测试。

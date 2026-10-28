@@ -2,7 +2,7 @@
 
 > 给**使用**这个插件的人：怎么让 DSH 里的 agent 替你在飞书里干活。
 > 安装见 [`install-for-others.md`](./install-for-others.md)；能力与权限对照见 [`feishu-capabilities.md`](./feishu-capabilities.md)。
-> 版本 0.1.2 · 实测宿主 DeepSeek Harness `0.1.2-alpha.2`
+> 版本 0.1.3 · 实测宿主 DeepSeek Harness `0.1.2-alpha.2`
 
 ---
 

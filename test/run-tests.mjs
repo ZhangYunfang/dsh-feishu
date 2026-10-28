@@ -1196,6 +1196,21 @@ async function main() {
     const authorize = await find(definitions, 'feishu_auth').execute({ action: 'authorize_url' }, {});
     assert(authorize.url.includes('client_id=cli_1'), 'the URL should carry the app id: ' + authorize.url);
     assert(authorize.url.includes('offline_access'), 'offline_access should be requested by default');
+    assert(authorize.data.nextStep.includes('complete'), 'the next step must name the browser-less fallback: ' + authorize.data.nextStep);
+  });
+  await test('an authorization without offline_access is reported as non-renewable', async () => {
+    // A grant that misses offline_access looks like a success and dies two hours
+    // later, which is exactly how it reads in the issue log (ISSUE-15).
+    const mock = mockFeishu();
+    mock.routeOn('POST', '/open-apis/authen/v2/oauth/token', 'https://accounts.feishu.cn');
+    mock.route('POST', '/open-apis/authen/v2/oauth/token', () => ({ body: { code: 0, access_token: 'u1', expires_in: 7200, scope: 'bitable:app' } }));
+    mock.route('GET', '/open-apis/authen/v1/user_info', () => ({ body: { code: 0, data: { name: 'Ada', open_id: 'ou_1' } } }));
+    const { config, identity, client } = compose(mock);
+    const definitions = toolsMod.buildTools({ client, identity, config, resolveRedirectUri: () => REDIRECT });
+    const done = await find(definitions, 'feishu_auth').execute({ action: 'complete', code: 'c1' }, {});
+    equal(done.data.refreshable, false);
+    assert(done.summary.includes('offline_access'), 'the summary must say the grant cannot renew: ' + done.summary);
+    assert(Array.isArray(done.warnings) && done.warnings.some((entry) => entry.includes('offline_access')), 'the warning must name offline_access');
   });
   await test('a custom tool prefix renames every tool', async () => {
     const mock = mockFeishu();

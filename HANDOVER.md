@@ -41,12 +41,12 @@ curl -s http://localhost:3080/api/feishu/status
 
 | 项 | 实测值 |
 |---|---|
-| 分支 / HEAD | `main @ 812a804`（0.1.2 发布提交；最新以 `git log -1` 为准） |
+| 分支 / HEAD | `main @ v0.1.3` 发布提交（最新以 `git log -1` 与 `git tag -l` 为准） |
 | 跟踪文件数 | 56 |
 | 未提交改动 | 0（工作树干净，与 `origin/main` 同步） |
 | 文档 | `docs/` 下 12 篇 markdown（安装指南/能力目录/发布说明 0.1.1 与 0.1.2/测试报告/问题日志/契约调研/记忆存档/文档索引/排障全记录…）+ `CHANGELOG.md` + 本文件 + `HANDOVER-MEMORY.md` |
-| 分发状态 | **0.1.2 已发布**：GitHub Release <https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.2>（附件 129106 B / 37 文件，sha256 `b53e9c2c…6ff22fcd0`，下载校验一致）；上一版 0.1.1 见 <https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.1>；三条安装通道实测可用（Release 下载 / `dsh plugin add github:ZhangYunfang/dsh-feishu#v0.1.2` / 本地 tarball）；**未发 npm**（未登录 + 包名属上游） |
-| 自测 | `node test/run-tests.mjs` → `112 passed, 0 failed` |
+| 分发状态 | **0.1.3 已发布**：GitHub Release <https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.3>（附件 130521 B / 37 文件，sha256 `3e13d2e1…b362880`）；历史版本 v0.1.2 / v0.1.1 同样在 Releases 下；三条安装通道实测可用（Release 下载 / `dsh plugin add github:ZhangYunfang/dsh-feishu#v0.1.3` / 本地 tarball）；**未发 npm**（未登录 + 包名属上游） |
+| 自测 | `node test/run-tests.mjs` → `113 passed, 0 failed` |
 | 真接口测试 | `npm run test:live` → **57 通过 / 0 失败 / 1 阻塞 / 4 跳过**（62 用例，详见 `docs/feishu-test-report.md`） |
 | 宿主挂载实测 | 真实 `cordis@4.0.2` + 真实 `ToolRuntime`/`SystemPrompt`/`WebServer` → 10 工具 / 6 路由 / 无内部错误 |
 | 线上接口 | `GET /api/feishu/status` → 200；`feishu_drive list_files`（用户身份）返回 38 条 |

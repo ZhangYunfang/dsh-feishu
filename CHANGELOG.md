@@ -6,6 +6,23 @@
 
 ---
 
+## v0.1.3 · 2026-10-28 · 已发版（授权环节：失败可解释、不可续期当场告警）
+
+这一版没有动自动续期算法本身，改的是**授权环节的可解释性** —— 2026-10-28 的事故里，两个关键信号其实都产生了，但用户和 agent 都没在当场看到（详见 ISSUE-15）。
+
+| 位置 | 改动 | 为什么 |
+|---|---|---|
+| `lib/tools/auth.js` · `authorize_url` 的 `nextStep` | 明确写出「浏览器回不到本机时，改用 `action: "complete"` 传 code」 | 本机 `dsh-web-startup-auth` 的浏览器 cookie 曾是 `SameSite=Strict`，跨站回跳必然死循环；旧文案却承诺「浏览器会自动落地」，与事实相反 |
+| `lib/tools/auth.js` · `complete` | 兑换后若 grant 不含 `offline_access`，`summary` 直说「到期即失效」，并在 `warnings` 里给出后台检查项 | 缺 `offline_access` 的授权**看起来是成功**，约 2 小时后才崩；旧实现只回 `refreshable: false`，极易被忽略 |
+| `lib/routes.js` · OAuth 回调成功页 | 无 `offline_access` 时标题变成「connected, but it will not renew itself」并转琥珀色 | 浏览器落地页是用户唯一会看的那一眼 |
+| `lib/routes.js` · `sendPage` | 新增 `warn` 色调（`#ad6800`），成功但有隐患的第三态 | 上面两处需要它 |
+| `test/run-tests.mjs` | 新增 1 条用例 + 1 条断言：`nextStep` 必须提到 `complete`；缺 `offline_access` 必须告警 | `node test/run-tests.mjs` → **113 passed, 0 failed**（原 112） |
+
+文档：`docs/dsh-feishu-安装与排障全记录.md` §六 风险 1 重写（`dsh-web-startup-auth@0.1.9` 的**浏览器 cookie 仍是 Strict**、精确行号、两条判据、重启顺序陷阱、`complete` 应急通道），`docs/feishu-issue-fix-log.md` 新增 **ISSUE-15**。
+未做的事：`offline_access` 丢失的**应用侧根因未确认**（授权链接一直带着该 scope，重授权后才恢复，无法排除当时应用版本权限未生效）；`SameSite` 补丁仍是本机 `node_modules` 补丁，不在本仓库。
+
+---
+
 ## v0.1.2 · 2026-10-28 · 已发版（设置页把自己锁死的两个定位缺陷）
 
 用户侧症状：设置页保存过一次配置后，此后每次打开都报「配置文件不可写：the profile patch file could not be located」，重启无效。查下来是**写入口与读入口各有一个缺陷**，任一存在都会让 `link:` 安装永远找不到自己的 `cordis.patch.yml`。

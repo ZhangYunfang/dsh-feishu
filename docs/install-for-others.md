@@ -2,7 +2,7 @@
 
 > 目标：让**没有这台机器任何上下文**的人，从零把 `dsh-feishu` 装进自己的 DeepSeek Harness 并跑通。
 > 装完怎么用见 [`user-guide.md`](./user-guide.md)；能做什么、每项要什么权限见 [`feishu-capabilities.md`](./feishu-capabilities.md)。
-> 版本 **0.1.2** · 实测宿主 DeepSeek Harness `0.1.2-alpha.2` · Node ≥ 20 · macOS / Linux 实测，Windows 路径差异见 §0.3
+> 版本 **0.1.3** · 实测宿主 DeepSeek Harness `0.1.2-alpha.2` · Node ≥ 20 · macOS / Linux 实测，Windows 路径差异见 §0.3
 
 ---
 
@@ -62,7 +62,7 @@ dsh plugin --profile "$PROFILE" add github:ZhangYunfang/dsh-feishu
 要钉版本：
 
 ```bash
-dsh plugin --profile "$PROFILE" add github:ZhangYunfang/dsh-feishu#v0.1.2
+dsh plugin --profile "$PROFILE" add github:ZhangYunfang/dsh-feishu#v0.1.3
 ```
 
 ### 方式 B：从 GitHub Release 的 tarball 安装（内网/离线）
@@ -70,15 +70,15 @@ dsh plugin --profile "$PROFILE" add github:ZhangYunfang/dsh-feishu#v0.1.2
 先下载（也可以在浏览器里点，或直接转发文件）：
 
 ```bash
-curl -L -o dsh-feishu-0.1.2.tgz \
-  https://github.com/ZhangYunfang/dsh-feishu/releases/download/v0.1.2/dsh-feishu-0.1.2.tgz
-shasum -a 256 dsh-feishu-0.1.2.tgz     # 应与发布页记录一致
+curl -L -o dsh-feishu-0.1.3.tgz \
+  https://github.com/ZhangYunfang/dsh-feishu/releases/download/v0.1.3/dsh-feishu-0.1.3.tgz
+shasum -a 256 dsh-feishu-0.1.3.tgz     # 应与发布页记录一致
 ```
 
 再装：
 
 ```bash
-dsh plugin --profile "$PROFILE" add /绝对路径/dsh-feishu-0.1.2.tgz
+dsh plugin --profile "$PROFILE" add /绝对路径/dsh-feishu-0.1.3.tgz
 ```
 
 > tarball 只含 `lib/`、`skill/`、`scripts/`、安装指南、用户指南、能力目录、README、LICENSE、bundle patch —— 不含测试与文档全集。
@@ -132,7 +132,7 @@ node -e "console.log(require('./node_modules/dsh-feishu/package.json').version)"
 python3 -c "import json;print(json.load(open('package.json'))['dsh']['profile']['bundles'][-3:])"
 ```
 
-期望：版本 `0.1.2`，bundle 列表末尾出现 `dsh-feishu`。
+期望：版本 `0.1.3`，bundle 列表末尾出现 `dsh-feishu`。
 
 ---
 
