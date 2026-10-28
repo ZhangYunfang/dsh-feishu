@@ -19,6 +19,7 @@
 | `docs/dsh-feishu-安装与排障全记录.md` | §一 缺陷表补第 9 条、状态块刷新为 2026-10-28 实测值；§六 新增「风险 6」全过程 | 线上 `GET /api/feishu/config` → `patch.file` 非 null、`entryFound: true`、`error: null` |
 
 线上验证：`patchReload: live`，修好 yaml 当场生效（不用重启）；本修复改的是 `lib/`，需重启 dsh-web 才加载。
+同期复验续期缺陷（同一个 dsh-web 进程 / 17:35）：`feishu_auth refresh` 连跑两次 → 两次都 `refreshable: true`、`scope` 16 项含 `offline_access`、`expiresAt` 每次前进、`refreshExpiresInDays` 重新给到 7 天 ⇒ `41b91fe` 的修复在线上依然成立，「约 2 小时就要重授权」没有再出现。
 未做的事：**没有发新版本、也没重打 tgz** —— 版本号仍是 0.1.1，等下次发版一并带出。
 
 ---
