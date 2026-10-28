@@ -52,10 +52,10 @@
 | sheet | 7 | 7 | 0 | 0 | 0 |
 | bitable | 10 | 10 | 0 | 0 | 0 |
 | query | 3 | 3 | 0 | 0 | 0 |
-| dashboard | 8 | 6 | 0 | 2 | 0 |
+| dashboard | 8 | 8 | 0 | 0 | 0 |
 | wiki | 4 | 3 | 0 | 0 | 1 |
 | message | 8 | 7 | 0 | 1 | 0 |
-| **合计** | **62** | **55** | **0** | **3** | **4** |
+| **合计** | **62** | **57** | **0** | **1** | **4** |
 
 判定口径：
 - **pass**：真接口返回且断言成立（含清理成功）
@@ -63,7 +63,7 @@
 - **skipped**：刻意不跑（破坏性、需要人工粘贴 code、或创建后无从清理）
 - **fail**：代码或契约缺陷，必须修
 
-**本轮 0 失败**。3 条 blocked：两条是应用后台还没开通 `base:dashboard:update` / `base:dashboard:delete`，一条是 webhook 需要用户自建机器人（见 §6）。
+**本轮 0 失败**。唯一 blocked 是 `MSG-07 webhook`：它需要一个用户自建的自定义机器人 webhook URL，插件侧没有可替代路径（见 §6）。4 条 skipped 均为主动跳过并写明理由（见 §4）。
 
 ---
 
@@ -76,68 +76,68 @@
 
 | 用例 | 优先级 | 领域 | 状态 | 证据 |
 |---|---|---|---|---|
-| `AUTH-01` | P0 | auth | pass | tenant ok · user Hunter Zhang · refreshable=true · scope=14 items |
+| `AUTH-01` | P0 | auth | pass | tenant ok · user Hunter Zhang · refreshable=true · scope=16 items |
 | `AUTH-02` | P0 | auth | pass | scopes=15 · redirect=http://127.0.0.1:3080/api/feishu/oauth/callback |
 | `AUTH-06` | P2 | auth | pass | fallback redirect=http://127.0.0.1:3080/api/feishu/oauth/callback |
-| `AUTH-03` | P0 | auth | pass | refreshable · scope=14 items · refresh expires in 7d |
+| `AUTH-03` | P0 | auth | pass | refreshable · scope=16 items · refresh expires in 7d |
 | `AUTH-07` | P0 | auth | skipped | deliberate: refreshing here rotates the single-use token, and this harness mounts the store read-only, so the rotated value could not be persisted — t |
 | `AUTH-04` | P1 | auth | skipped | destructive: the stored grant is the only one, and refresh_token is single-use |
 | `AUTH-05` | P2 | auth | skipped | needs a fresh authorization code pasted in; the state is single-use |
 | `API-01` | P0 | api | pass | root token present=true |
 | `API-02` | P1 | api | pass | files key present=true |
 | `DRV-01` | P0 | drive | pass | files=38 · has_more=undefined |
-| `DRV-02` | P0 | drive | pass | token=AfhifRBL2lHc5hd9xsNc5fF… |
-| `DRV-03` | P0 | drive | pass | token=VlqLbSCOgoVMNNxuZF7ckGP… · uploaded DSH-TEST-202610280358.txt (49 bytes) as VlqLbSCOgo… |
+| `DRV-02` | P0 | drive | pass | token=XhyYf0AGrlX1ardaBARcyRv… |
+| `DRV-03` | P0 | drive | pass | token=P6GbbJJRsog5D6xoa13cIFE… · uploaded DSH-TEST-202610280617.txt (49 bytes) as P6GbbJJRso… |
 | `DRV-04` | P0 | drive | pass | 49 bytes · round-trip ok |
-| `DRV-05` | P1 | drive | pass | metas=1 · {"create_time":"1793159917","doc_token":"AfhifRBL2lHc5hd9xsNc5fFenvf","doc_type… |
-| `DOC-01` | P0 | doc | pass | documentId=TVkGdNeDSomVRfxQnbq… · https://feishu.cn/docx/TVkGdNeDSomVRfxQnbqcBGVunlB |
+| `DRV-05` | P1 | drive | pass | metas=1 · {"create_time":"1793168253","doc_token":"XhyYf0AGrlX1ardaBARcyRvYntd","doc_type… |
+| `DOC-01` | P0 | doc | pass | documentId=ShSVd80NnoRd8txISLt… · https://feishu.cn/docx/ShSVd80NnoRd8txISLtc3fvjnec |
 | `DOC-02` | P0 | doc | pass | converted and appended 14 block(s) of Markdown |
 | `DOC-03` | P1 | doc | pass | appended 1 block(s) |
 | `DOC-04` | P1 | doc | pass | blocks=16 |
 | `DOC-05` | P0 | doc | pass | chars=207 |
-| `DOC-06` | P1 | doc | pass | DSH-TEST-202610280358-doc |
-| `DOC-07` | P1 | doc | pass | keys=ticket,extra,job_error_msg,job_status · imported DSH-TEST-202610280358-import.m… |
-| `DOC-08` | P2 | doc | pass | import ticket 7701563225007246318 status read |
-| `SHT-01` | P0 | sheet | pass | token=Fx39s9ewLhiX44tDjgQ… |
+| `DOC-06` | P1 | doc | pass | DSH-TEST-202610280617-doc |
+| `DOC-07` | P1 | doc | pass | keys=ticket,extra,job_error_msg,job_status · imported DSH-TEST-202610280617-import.m… |
+| `DOC-08` | P2 | doc | pass | import ticket 7701599073170099451 status read |
+| `SHT-01` | P0 | sheet | pass | token=YBpisBQ9hhZYOOtnPM4… |
 | `SHT-02` | P1 | sheet | pass | read spreadsheet metadata |
 | `SHT-03` | P1 | sheet | pass | sheets=1 |
-| `SHT-04` | P0 | sheet | pass | wrote 3 row(s) at 7a42aa!A1:B3 |
+| `SHT-04` | P0 | sheet | pass | wrote 3 row(s) at d3a3b5!A1:B3 |
 | `SHT-05` | P0 | sheet | pass | rows=3 |
-| `SHT-06` | P1 | sheet | pass | appended 1 row(s) at 7a42aa!A1:B1 |
-| `SHT-07` | P1 | sheet | pass | added sheet 3FXyO4 to the spreadsheet |
-| `BIT-01` | P0 | bitable | pass | appToken=SVATbaXBnaZ1fCsyEa5… |
+| `SHT-06` | P1 | sheet | pass | appended 1 row(s) at d3a3b5!A1:B1 |
+| `SHT-07` | P1 | sheet | pass | added sheet 3vK6w8 to the spreadsheet |
+| `BIT-01` | P0 | bitable | pass | appToken=XpQ8bwAobaC0kTslmiX… |
 | `BIT-02` | P0 | bitable | pass | tables=2 · first=数据表 |
-| `BIT-03` | P1 | bitable | pass | created table "tags" (tblXQ7FWlYMLEgXW) |
-| `BIT-04` | P1 | bitable | pass | created field "备注" in table tblNS2Vbf16pQmuo |
+| `BIT-03` | P1 | bitable | pass | created table "tags" (tblMQWLJiioCsYrK) |
+| `BIT-04` | P1 | bitable | pass | created field "备注" in table tblvt1dc6NAa2PBT |
 | `BIT-05` | P0 | bitable | pass | fields=4 |
 | `BIT-06` | P0 | bitable | pass | records=2 |
 | `BIT-07` | P0 | bitable | pass | matched=1 · total=1 |
-| `BIT-08` | P1 | bitable | pass | updated 1 record(s) in table tblNS2Vbf16pQmuo |
-| `BIT-09` | P1 | bitable | pass | read record reczz28SgsO5wi6D |
-| `BIT-10` | P1 | bitable | pass | deleted 1 record(s) from table tblNS2Vbf16pQmuo |
+| `BIT-08` | P1 | bitable | pass | updated 1 record(s) in table tblvt1dc6NAa2PBT |
+| `BIT-09` | P1 | bitable | pass | read record reczz28SjFYt3FKK |
+| `BIT-10` | P1 | bitable | pass | deleted 1 record(s) from table tblvt1dc6NAa2PBT |
 | `QRY-01` | P1 | query | pass | rows=1 · [{"n":1,"状态":"待办"}] |
 | `QRY-02` | P1 | query | pass | [{"mean":"9","total":"9"}] |
 | `QRY-03` | P2 | query | pass | rows=1 |
-| `DSH-01` | P1 | dashboard | pass | dashboardId=blk37oCKsYgJsxgb |
-| `DSH-02` | P1 | dashboard | pass | blockId=chtcnLuNGubFPGXoEFE2B… |
-| `DSH-03` | P1 | dashboard | pass | blockId=chtcniGJNvjVuzGOi5IIq… |
+| `DSH-01` | P1 | dashboard | pass | dashboardId=blkDN1ZjlWIymiAw |
+| `DSH-02` | P1 | dashboard | pass | blockId=chtcnNPBTYtE3PhzPh3JR… |
+| `DSH-03` | P1 | dashboard | pass | blockId=chtcnMDPy6XyfFhXhs7pl… |
 | `DSH-04` | P1 | dashboard | pass | blocks=2 |
 | `DSH-05` | P2 | dashboard | pass | read block "DSH-TEST-chart" (column) |
 | `DSH-06` | P1 | dashboard | pass | {"dimensions":[{"alias":"dim_54q25oCB","field_name":"状态"}],"main_data":[{"dim_54q25oCB":{"value":"待… |
-| `DSH-07` | P2 | dashboard | blocked | blocked: the user grant lacks base:dashboard:update (Feishu code 99991679); the app console must enable it, publish a version, and then be re-authoriz |
-| `DSH-08` | P2 | dashboard | blocked | blocked: the user grant lacks base:dashboard:delete (Feishu code 99991679); the app console must enable it, publish a version, and then be re-authoriz |
+| `DSH-07` | P2 | dashboard | pass | updated block chtcnNPBTYtE3PhzPh3JR8yQZre |
+| `DSH-08` | P2 | dashboard | pass | deleted block chtcnNPBTYtE3PhzPh3JR8yQZre |
 | `WIK-01` | P1 | wiki | pass | spaces=3 · first=[旖旎量化] |
 | `WIK-02` | P1 | wiki | pass | nodes=6 |
 | `WIK-03` | P1 | wiki | pass | resolved node "[旖旎量化]文档首页" to docx CjWEd6Hwxo4et1xYFSQc65ugngb |
 | `WIK-04` | P1 | wiki | skipped | blocked: neither the plugin nor the open platform offers a delete-node call, so a created node cannot be cleaned up — needs a disposable test space |
-| `MSG-01` | P0 | message | pass | message_id=om_x100b61237f0540accd0… |
-| `MSG-02` | P0 | message | pass | replied to message om_x100b61237f0540accd0f21563fca31b |
-| `MSG-03` | P1 | message | pass | message_id=om_x100b61237f11c8a8ce9… |
-| `MSG-04` | P1 | message | pass | message_id=om_x100b61237f2be4a0cf9… |
-| `MSG-05` | P1 | message | pass | message_id=om_x100b61237f3530a8ce9… |
-| `MSG-06` | P1 | message | pass | message_id=om_x100b61237cc6dc80b08… |
+| `MSG-01` | P0 | message | pass | message_id=om_x100b612d739a5884dfb… |
+| `MSG-02` | P0 | message | pass | replied to message om_x100b612d739a5884dfb0e8a4a3b6951 |
+| `MSG-03` | P1 | message | pass | message_id=om_x100b612d73b748a8ddf… |
+| `MSG-04` | P1 | message | pass | message_id=om_x100b612d7341a4b8def… |
+| `MSG-05` | P1 | message | pass | message_id=om_x100b612d7376d4a0dea… |
+| `MSG-06` | P1 | message | pass | message_id=om_x100b612d73291ca4c1e… |
 | `MSG-07` | P2 | message | blocked | blocked: needs a custom-bot webhook URL, which only the user can create |
-| `MSG-08` | P2 | message | pass | called DELETE /im/v1/messages/om_x100b61237f0540accd0f21563fca31b |
+| `MSG-08` | P2 | message | pass | called DELETE /im/v1/messages/om_x100b612d739a5884dfb0e8a4a3b6951 |
 
 ---
 

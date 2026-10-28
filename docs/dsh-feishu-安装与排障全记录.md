@@ -896,19 +896,22 @@ cd /Users/zyf/Project/DSH_WorkSpace/dsh-feishu && npm test    # → 103 passed, 
 | `surfaces the refresh failure code and its remediation hint` | `20073` 透传、提示含 `authorize_url`、失败的续期不改动已存授权 |
 | `reports the refresh lifetime without inventing one` | 未知有效期时**不出** `refreshExpiresInDays`（否则工具返回不是无损 JSON） |
 
-**线上（真凭据、真接口；前提是 dsh-web 已重启加载新代码）**
+**线上（真凭据、真接口；2026-10-28 实测通过）**
 
-```text
-feishu_auth  action=authorize_url   # 旧 grant 的 refresh token 已被旧代码抹掉，必须重新授权一次
-feishu_auth  action=status          # 期望 refreshable: true、scope 含 offline_access，记下 expiresAt
-feishu_auth  action=refresh         # 主动续期一次
-feishu_auth  action=status          # 期望 expiresAt 变大、refreshable 仍 true、refreshExpiresInDays 有值
-feishu_auth  action=refresh         # 关键一步：证明轮换出的新 token 真的落盘了
-feishu_auth  action=status          # 期望 refreshable 仍 true
-feishu_drive action=list_files identity=user      # 用新 token 真取一次数据
-```
+前置：应用后台开通 `offline_access` / `base:table:read` / `base:dashboard:read` / `base:dashboard:create` / `base:dashboard:update` / `base:dashboard:delete` / `docx:document.block:convert` 并**创建版本发布**，然后重新授权一次（用户 scope 在授权那刻固化）。
 
-判据：**两次续期后 `refreshable` 始终为 `true`**，且用户身份调用成功。修复前，第一次续期后 `refreshable` 就变 `false`，第二次续期直接报 `the stored Feishu grant has no refresh token`。
+实际执行与结果：
+
+| 步骤 | 实测输出 | 判读 |
+|---|---|---|
+| `feishu_auth status` | `refreshable: true`；`scope` 16 项含 `offline_access`；`refreshExpiresInDays: 7`；**无告警** | 授权吃到全部权限 |
+| `feishu_auth refresh`（第 1 次） | `refreshed`；`refreshable: true` | 轮换成功 |
+| `feishu_auth refresh`（第 2 次） | `refreshed`；`refreshable: true` | **关键**：轮换出的新 token 已落盘，第二次仍可用 |
+| 全量 `npm run test:live` | `pass=57 fail=0 blocked=1 skipped=4`，`grant rotated during the run: false` | 除 webhook 外全绿 |
+
+对照修复前：第一次续期后 `refreshable` 就变 `false`，第二次续期直接报 `the stored Feishu grant has no refresh token`。
+
+> 判定口径提醒：`refreshable: true` 只是「记录里有 refresh token」的**存在性**检查，token 被撤销后照样为 `true`（实测 `20064` 时仍显示 true）。要证实「能续期」，**只有真跑一次 refresh**，连跑两次更好。
 
 #### 残留边界（协议限制，不是缺陷）
 
