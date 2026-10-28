@@ -138,6 +138,9 @@ python3 -c "import json;print(json.load(open('package.json'))['dsh']['profile'][
 
 ## 2. 飞书应用配置（最容易卡住）
 
+> 这一步的**完整版**（含每一步的界面位置、每个权限的用途与缺失症状、错误码对照、检查清单）在
+> [`feishu-console-setup.md`](./feishu-console-setup.md)。本节只给最短路径。
+
 ### 2.1 建应用，拿 App ID / App Secret
 
 1. 打开 <https://open.feishu.cn/app> → 创建企业自建应用

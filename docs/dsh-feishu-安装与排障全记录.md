@@ -53,46 +53,15 @@ feishu_drive(用户身份) : found 38 item(s) in the drive root
 
 ### A. 飞书云端（浏览器操作）
 
-**A1 · 创建应用**
-打开 <https://open.feishu.cn/app> → 创建**企业自建应用** → 记下 **App ID**（形如 `cli_xxx`）与 **App Secret**。
+**A · 飞书云端配置**
 
-**A2 · 添加机器人能力**
-「添加应用能力」→ 勾选 **机器人**（不加则 `im:*` 类工具不可用）。
+> 完整八步流程（创建应用 → 取凭证 → 机器人能力 → **15 项权限** → 安全设置 → 可用范围 → 发版 → 验收）、
+> 逐权限用途与缺失症状、错误码对照表、上线检查清单，见独立权威文档：
+> **[`feishu-console-setup.md`](./feishu-console-setup.md)**。
+>
+> 本节原先写的 9 项权限版流程已过时（缺仪表盘四个 scope、可用范围、刷新开关），已改为指针，避免两处维护。
 
-**A3 · 配置重定向 URL**
-「开发配置 → 安全设置 → 重定向 URL」，两条都加（飞书单应用上限 300 条）：
-
-```
-http://127.0.0.1:3080/api/feishu/oauth/callback
-http://localhost:3080/api/feishu/oauth/callback
-```
-
-> **规则要点**（查证自 [官方文档](https://open.feishu.cn/document/uYjL24iN/uYjN3QjL2YzN04iN2cDN.md?lang=zh-CN)）：
-> ① `http` 与自定义端口均支持，官方示例本身即 `http://example.com:8080/...`；
-> ② 必须**逐字匹配**，不匹配会重定向到失败页并报 `{code: 2000, message: "redirect_uri unmatch"}`；
-> ③ 必须含完整路径，但 `?` / `#` 后缀不生效；
-> ④ 不支持动态路由。
-
-**A4 · 开通权限**
-「权限管理」搜索并开通这 9 个：
-
-```
-offline_access
-bitable:app
-docx:document
-drive:drive
-sheets:spreadsheet
-wiki:wiki
-im:message
-im:resource
-contact:user.base:readonly
-```
-
-**A5 · 创建版本并发布** ⚠️ 最容易漏
-
-「版本管理与发布 → 创建版本 → 申请发布」。
-
-> **只勾权限不发版 = 权限不生效**，调用会返回 `99991679`。发版后回「权限管理」页，每个权限状态应显示 **已生效**，而不是「待发布」。
+只留一句最要紧的：**勾完权限必须「创建版本并发布」**，否则调用报 `99991679`；后台改完**用户还要重新授权一次**才能吃到新 scope。
 
 ---
 

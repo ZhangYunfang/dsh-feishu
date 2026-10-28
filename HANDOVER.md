@@ -45,7 +45,7 @@ curl -s http://localhost:3080/api/feishu/status
 | 跟踪文件数 | 41 |
 | 未提交改动 | 1 项（`pnpm-lock.yaml`，空 lockfile，故意不提交） |
 | 文档 | `docs/` 下 6 篇（含安装指南/能力目录/发布说明/测试报告/问题日志/契约调研）+ `CHANGELOG.md` + 本文件 + `HANDOVER-MEMORY.md` |
-| 分发状态 | **0.1.1 已发布**：GitHub Release <https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.1>（附件 120559 B / 36 文件，下载校验一致）；三条安装通道实测可用（Release 下载 / `dsh plugin add github:ZhangYunfang/dsh-feishu` / 本地 tarball）；**未发 npm**（未登录 + 包名属上游） |
+| 分发状态 | **0.1.1 已发布**：GitHub Release <https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.1>（附件 127084 B / 37 文件，下载校验一致）；三条安装通道实测可用（Release 下载 / `dsh plugin add github:ZhangYunfang/dsh-feishu` / 本地 tarball）；**未发 npm**（未登录 + 包名属上游） |
 | 自测 | `npm test` → `107 passed, 0 failed` |
 | 真接口测试 | `npm run test:live` → **57 通过 / 0 失败 / 1 阻塞 / 4 跳过**（62 用例，详见 `docs/feishu-test-report.md`） |
 | 宿主挂载实测 | 真实 `cordis@4.0.2` + 真实 `ToolRuntime`/`SystemPrompt`/`WebServer` → 10 工具 / 6 路由 / 无内部错误 |
@@ -223,6 +223,7 @@ curl -s http://localhost:3080/api/feishu/status
 | `docs/dsh-feishu-安装与排障全记录.md` | **主排障文档**：安装步骤、6 个坑的完整过程、诊断方法论、配置清单、复发风险与恢复命令、命令速查与源码索引 |
 | `docs/dsh-plugin-contract-0.1.2-alpha.2.md` | DSH 插件包契约调研（逐条 `path:line`） |
 | `CHANGELOG.md` | 变更记录：三轮改动（适配 / 契约修复 / 全功能测试与续期闭环）+ 提交号 + 复现命令 |
+| `docs/feishu-console-setup.md` | 飞书后台配置全流程（权威）：八步、15 权限、发版、错误码表、检查清单 |
 | `docs/user-guide.md` | 用户指南：提示词配方、结果解读、安全边界、故障处置、端到端例子 |
 | `docs/install-for-others.md` | 给别人装：三条安装通道（含 `dsh plugin --profile` 真实语义）、无 CLI 的手动路径、飞书配置、验收、故障表 |
 | `docs/feishu-capabilities.md` | 功能能力目录：10 工具 / 63 单元的作用与所需权限、能力速查、不支持项、覆盖度 |

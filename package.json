@@ -17,6 +17,7 @@
     "lib",
     "skill",
     "scripts",
+    "docs/feishu-console-setup.md",
     "docs/install-for-others.md",
     "docs/user-guide.md",
     "docs/feishu-capabilities.md",
