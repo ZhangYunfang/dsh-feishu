@@ -180,7 +180,8 @@ cat test/live/last-run.json | python3 -m json.tool | head -40
 | 4 | 缺 `base:dashboard:read` / `base:dashboard:create` | `feishu_dashboard` 读、写全部不可用 | 同上 |
 | 5 | `feishu_message webhook` 需自建机器人 webhook URL | 该 action 无法自动测 | 用户：群/单聊里加自定义机器人并给 URL |
 | 6 | `feishu_wiki` 无删除节点能力（插件与开放平台都没有） | 建的 wiki 节点无法清理，故本轮不建 | 如需覆盖：提供可弃用的测试知识库 |
-| 7 | 代码改动需重启 dsh-web 才生效 | 改了代码但没重启 = 仍在跑旧逻辑 | 运维动作（supervisor 托管） |
+| 7 | 工具生成的授权链接曾因未登记 state 被回调拒绝（ISSUE-08，已修，需重启生效） | 误判为「授权失败」，白做一次授权 | 已修；重启前进面板入口授权 |
+| 8 | 代码改动需重启 dsh-web 才生效 | 改了代码但没重启 = 仍在跑旧逻辑 | 运维动作（supervisor 托管） |
 
 **已修复的 5 个缺陷**见 `docs/feishu-issue-fix-log.md`（含复现步骤、根因、修改文件、回归结果）。
 

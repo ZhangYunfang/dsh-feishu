@@ -118,6 +118,24 @@
 | **验收判据** | `feishu_auth status` 的 `scope` 含 `offline_access`、`refreshable: true`、`refreshExpiresInDays` 有值；随后 `feishu_auth refresh` 连做两次，`refreshable` 始终 `true` |
 | **当前状态** | ⏳ 待用户在后台操作；代码侧已就绪（`41b91fe` + ISSUE-05） |
 
+
+---
+
+## ISSUE-08 · 工具生成的授权链接会被自己的回调拒绝（`feishu_auth authorize_url`）
+
+| 项 | 内容 |
+|---|---|
+| **功能与用例** | `feishu_auth authorize_url` + `GET /api/feishu/oauth/callback`；线上复验时暴露 |
+| **现象** | 点开工具返回的授权链接、在飞书页面同意后，回跳本地得到 `Authorization state mismatch — This callback did not match an authorization this host started`，授权白做一次 |
+| **复现** | ①任一次从设置面板发起授权（`/api/feishu/oauth/start` 会把 state 加进 `oauth.pending`）；②再调用 `feishu_auth action=authorize_url` 拿链接；③点开链接同意 → 回跳报 state mismatch |
+| **环境** | dsh-web 由 supervisor 托管；浏览器回跳 `http://127.0.0.1:3080/api/feishu/oauth/callback` |
+| **关键日志** | 回调判定：`if (state !== null && oauth.pending.size > 0 && !oauth.pending.has(state)) → 400 state mismatch`（`lib/routes.js`）；而 `oauth.pending.add()` 只出现在 `oauthStart` 里 |
+| **根因** | 有**两个**生成授权 URL 的入口，但只有路由 `/api/feishu/oauth/start` 把 `state` 登记进 `oauth.pending`；工具 `authorize_url` 生成 URL 后什么都没登记。于是只要面板被用过（pending 非空），工具给的链接**必被拒**；pending 为空时才侥幸放行——典型的「能用一次、之后就坏」 |
+| **修复** | `lib/index.js` 把 `oauth.pending` 以 `registerOAuthState(state)` 回调透传；`lib/tools/auth.js` 在生成 URL 后立即登记该 state。两个入口从此走同一套状态登记 |
+| **修改文件** | `lib/index.js`、`lib/tools/auth.js`、`test/run-tests.mjs`（回归用例） |
+| **回归** | 离线：新增用例断言「对外宣告的 state = 登记进 pending 的 state = URL 里携带的 state」→ 通过（`108 passed`）。线上：改用 `/api/feishu/oauth/start?json=1` 拿到**服务端已登记**的 state，再按该 state + 13 项 scope 拼链接，用户点开可正常回跳 |
+| **遗留风险** | 修复需重启 dsh-web 才对工具生成的新链接生效；在此之前请用面板入口（或按 `start` 返回的 state 拼链接）。另：`/start` 生成的链接**不带 `scope` 参数**（`config.oauthScopes` 为空时 `scopes.join(' ')` 为空串被 query 跳过），等于放弃显式申请权限——本轮靠显式拼 13 项 scope 规避 |
+
 ---
 
 ## 汇总
@@ -131,3 +149,4 @@
 | ISSUE-05 | 推荐 scope 缺仪表盘写权限 | 已修 | `39c7396` |
 | ISSUE-06 | 撤回要用发送方身份 | 契约要点（文档化） | `39c7396` |
 | ISSUE-07 | 后台缺 5 个权限 | 🔴 阻塞，需用户操作 | — |
+| ISSUE-08 | 工具生成的授权链接被自己回调拒 | 已修（需重启生效） | 本次提交 |

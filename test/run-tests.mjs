@@ -812,6 +812,25 @@ async function main() {
     const state = await identity.userState();
     equal(state.refreshable, true, 'a failed refresh must leave the stored grant alone');
   });
+  await test('auth authorize_url registers the state its callback will match', async () => {
+    // The callback rejects a state this host never started, and only the /start
+    // route used to register one — so a URL minted by this tool failed with
+    // "Authorization state mismatch" the moment the panel had been used.
+    const registered = [];
+    const mock = mockFeishu();
+    const { config, identity, client } = compose(mock);
+    const toolsMod = await import('file:///' + join(LIB, 'tools', 'index.js').replace(/\\/gu, '/'));
+    const definitions = toolsMod.buildTools({
+      client, identity, config,
+      resolveRedirectUri: () => REDIRECT,
+      registerOAuthState: (state) => registered.push(state),
+    });
+    const tool = find(definitions, 'feishu_auth');
+    const value = await tool.execute({ action: 'authorize_url' }, {});
+    equal(registered.length, 1, 'the advertised state has to be registered with the host');
+    equal(registered[0], value.data.state, 'the registered state is the one in the URL');
+    assert(String(value.url).includes('state=' + value.data.state), 'the URL should carry that same state');
+  });
   await test('reports the app identity and warns when auto has no grant', async () => {
     const mock = mockFeishu();
     mock.route('POST', '/open-apis/auth/v3/tenant_access_token/internal', () => ({ body: { code: 0, tenant_access_token: 't1', expire: 7200 } }));
