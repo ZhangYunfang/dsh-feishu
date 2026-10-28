@@ -7,6 +7,7 @@
 | [`dsh-feishu-安装与排障全记录.md`](./dsh-feishu-安装与排障全记录.md) | **★ 主文档**：安装步骤（飞书云端 + DSH 本地 + 授权验证）、7 个坑的现象/根因/证据/解法、诊断方法论、维护风险、**全功能自测与 7 处修复**、命令速查与源码索引 |
 | [`dsh-plugin-contract-0.1.2-alpha.2.md`](./dsh-plugin-contract-0.1.2-alpha.2.md) | DSH 插件包契约调研：profile/bundle 解析、patch 方言、host/client 拆分、工具注册、设置 schema、HTTP 路由、版本清单，逐条带 `path:line` |
 | [`记忆存档.md`](./记忆存档.md) | DSH 记忆库导出快照（项目 KEY 轨全文 + 相关项目/每日日志摘录 + 灌回新机器的方法），已脱敏 |
+| [`user-guide.md`](./user-guide.md) | **★ 用户指南**：怎么用中文使唤 agent、9 类任务的提示词配方、结果怎么读、安全边界、故障处置、3 个端到端例子 |
 | [`install-for-others.md`](./install-for-others.md) | **★ 给别人用**：装到另一台机器的三条通道、飞书应用配置（15 项权限 + 重定向 URL + 必须发版）、配置项、验收三条、故障对照表 |
 | [`RELEASE-0.1.1.md`](./RELEASE-0.1.1.md) | 发布说明（可直接粘贴到 GitHub Release / npm）：修了什么、升级者要做什么、验证数据、校验值 |
 | [`feishu-capabilities.md`](./feishu-capabilities.md) | **★ 功能能力目录**：10 个工具 / 63 个可测单元逐个列作用与所需权限、能力速查表、明确不支持的能力、实测覆盖度 |

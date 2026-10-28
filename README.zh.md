@@ -6,6 +6,7 @@
 > 另附 62 条打真飞书接口的测试。
 >
 > - 装到别的机器：[`docs/install-for-others.md`](docs/install-for-others.md)
+- 用户指南（怎么使唤 agent、各类任务配方）：[`docs/user-guide.md`](docs/user-guide.md)
 > - 能做什么、每项能力要什么权限：[`docs/feishu-capabilities.md`](docs/feishu-capabilities.md)
 > - 改了什么、怎么验的：[`CHANGELOG.md`](CHANGELOG.md)
 > - 上游项目：<https://github.com/2048lr/dsh-feishu>

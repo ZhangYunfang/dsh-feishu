@@ -1,6 +1,6 @@
 # dsh-feishu 0.1.1
 
-> **已发布**：<https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.1> · 附件 `dsh-feishu-0.1.1.tgz`（113337 字节，sha256 `7a2ee81b…50fc2767`，下载后校验一致）
+> **已发布**：<https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.1> · 附件 `dsh-feishu-0.1.1.tgz`（120559 字节 / 36 个文件，sha256 `22fd1026…52cf5d2b`，下载后校验一致）
 
 > 本文件既是发布说明的源，也直接用作 GitHub Release 正文（正文里的链接已写成绝对 URL，点得开）。
 > 上游：`2048lr/dsh-feishu`（0.1.0）· 本分支：`ZhangYunfang/dsh-feishu`（0.1.1）
@@ -76,6 +76,6 @@ feishu_auth refresh → 连跑两次均成功，refreshable 始终 true
 ## Checksums
 
 ```text
-dsh-feishu-0.1.1.tgz  111K  35 个文件
-sha256  7a2ee81bf248ac6ac5841f6eaa9989574f496675a5150f9ed8bbed0c50fc2767
+dsh-feishu-0.1.1.tgz  120559 B  36 个文件（含用户指南与安装指南）
+sha256  22fd1026ffbba3ebfa3e53ec148ca1b02ed3483ec51a97c4b38397a552cf5d2b
 ```

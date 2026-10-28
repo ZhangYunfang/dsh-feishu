@@ -6,6 +6,7 @@
 > can be deleted — plus a 62-case live test harness against the real Feishu API.
 >
 > - Install (other machines): [`docs/install-for-others.md`](docs/install-for-others.md)
+- Usage guide (how to ask the agent, per-task recipes): [`docs/user-guide.md`](docs/user-guide.md)
 > - What it can do, and which scopes each capability needs: [`docs/feishu-capabilities.md`](docs/feishu-capabilities.md)
 > - What changed and how it was verified: [`CHANGELOG.md`](CHANGELOG.md)
 > - Upstream project: <https://github.com/2048lr/dsh-feishu>

@@ -8,14 +8,15 @@
 
 ## v0.1.1 · 2026-10-28 · 首个可分发版本（= 下面 v0.1.0-local.3 一轮）
 
-打包发布：`dsh-feishu-0.1.1.tgz`（111K / 35 文件 / sha256 `7a2ee81b…50fc2767`）。
+打包发布：`dsh-feishu-0.1.1.tgz`（120559 B / 36 文件 / sha256 `22fd1026…52cf5d2b`）。
 
 - `package.json`：版本 0.1.0 → **0.1.1**；`repository`/`homepage`/`bugs` 从上游改指本分支（否则别人的 issue 会提错地方）；`files` 纳入安装指南与能力目录
 - `cordis.patch.yml`：安装示例同时给出本分支与上游
-- 新增 [`docs/install-for-others.md`](docs/install-for-others.md)（给别人用）与 [`docs/RELEASE-0.1.1.md`](docs/RELEASE-0.1.1.md)（发布说明）
+- 新增 [`docs/user-guide.md`](docs/user-guide.md)（**用户指南**：提示词配方 / 结果解读 / 安全边界 / 故障处置 / 3 个端到端例子）与 [`docs/RELEASE-0.1.1.md`](docs/RELEASE-0.1.1.md)（发布说明）
+- 重写 [`docs/install-for-others.md`](docs/install-for-others.md)：**修正 `dsh plugin` 的真实语义**（必须带 `--profile <名>`；它会 pnpm add 后按已安装状态 reconcile `dsh.profile.bundles`，声明了 `dsh.bundle` 的依赖自动激活），补环境自查、无 CLI 的手动两步、跨平台路径、装完自检
 - README / README.zh 顶部加本分支说明与文档入口
 - 验证：tarball 解包后 `apply/inject/name` 可 load、10 工具 61 action、15 scope；临时 profile `pnpm add <tgz>` 成功；包内无密钥
-- **GitHub Release 已发布**：<https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.1>（tag `v0.1.1`，附件 `dsh-feishu-0.1.1.tgz` 113337 字节；实测下载 sha256 与本地一致）。为此安装了 `gh` CLI 2.103.0 并完成设备码授权
+- **GitHub Release 已发布**：<https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.1>（tag `v0.1.1`，附件 `dsh-feishu-0.1.1.tgz`（发布后因补充用户指南重打过一次，现行 120559 B / 36 文件；实测下载 sha256 与本地一致））。为此安装了 `gh` CLI 2.103.0 并完成设备码授权
 - 未做的事：**未发布到 npm**（本机 `npm whoami` 未登录，且 `dsh-feishu` 这个包名属上游）——若要走 npm，需改用自有 scope（如 `@zhangyunfang/dsh-feishu`）或请上游收编
 
 ## v0.1.0-local.3 · 2026-10-28 · 全功能测试与续期缺陷闭环
