@@ -196,6 +196,24 @@
 | **教训** | ①「只读凭据库」的护栏必须同时约束**会轮换凭证的调用**，两者是一对；②`refreshable: true` 只是「记录里有 refresh token」的**存在性**检查，不代表它还有效——撤销后照样显示 true，只有真续期才能证伪 |
 | **遗留风险** | 本次已消耗掉一份 grant（需重新授权一次），代价记在此处避免重犯 |
 
+
+---
+
+## ISSUE-13 · `create_app` 建表失败时把已建好的 Base token 弄丢（`feishu_bitable`）
+
+| 项 | 内容 |
+|---|---|
+| **功能与用例** | `feishu_bitable create_app`（带 `tables` 一次建 Base + 表） |
+| **现象** | 建 Base 成功、建表被飞书拒（`1254001 WrongRequestBody`），返回的异常里**只有 API 报错**，既没有 `app_token` 也没有 url。结果是**云端多了一个没人认领的 Base**，调用方无法继续操作它（我这次是从报错的 `path` 里把 token 挖出来的） |
+| **复现** | `feishu_bitable action=create_app name=X tables=[{name:Y, fields:[{name:"进度", type:"number", property:{formatter:"0%"}}]}]` → 飞书答 `Invalid request parameter: 'property.formatter'. Correct format : Number formatter 0% is invalid`，而 Base 已经存在 |
+| **环境** | 用户身份；0.1.1 |
+| **关键日志** | `{"code":1254001,"msg":"WrongRequestBody","error":{"message":"Invalid request parameter: 'property.formatter'. Correct format : Number formatter 0% is invalid."}}` |
+| **根因** | ①飞书 number 字段的 `formatter` **不接受 `0%`**（百分比要另想办法）；②插件的 `create_app` 是**两次调用**（建 app → 建表），第二步失败时直接抛原始错误，把第一步的成果信息丢了 |
+| **修复** | `createTables` 逐表 catch：抛出「app 已创建 + 它的 token + 已建成功哪些表 + 怎么补建」的可执行错误，而不是裸 API 错误 |
+| **修改文件** | `lib/tools/bitable.js`、`test/run-tests.mjs` |
+| **回归** | 离线：新增用例断言错误信息里含 `app_token` 与 `create_table` 指引 → 109 通过。线上：真实创建「开发任务」Base 时遇到该问题，之后按报错里的 token 用 `create_table` + `create_field` 逐个补齐 14 个字段成功 |
+| **遗留风险** | 无。另记下一条契约事实：**百分比不要用 `formatter:"0%"`**，直接建普通数字字段并在字段名里写明 `(0-100)` 更稳妥 |
+
 ---
 
 ## 汇总
@@ -213,4 +231,5 @@
 | ISSUE-09 | 含表格的 Markdown 追加必失败 | 已修，线上验证通过 | 本次提交 |
 | ISSUE-10 | 推荐 scope 缺仪表盘改/删 | 源码已修，待后台开权限 | 本次提交 |
 | ISSUE-11 | 工具失败的 hint/错误码被吞 | 已修（需重启生效） | 本次提交 |
-| ISSUE-12 | 运行器消耗了一次性 refresh token | 已修（用例改非破坏性） | 本次提交 |
+| ISSUE-12 | 运行器消耗了一次性 refresh token | 已修（用例改非破坏性） | `c201591` |
+| ISSUE-13 | `create_app` 建表失败会丢 Base token | 已修 | 本次提交 |

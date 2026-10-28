@@ -1020,6 +1020,24 @@ async function main() {
       await rm(dir, { recursive: true, force: true });
     }
   });
+  await test('bitable create_app names the app it already made when a table is rejected', async () => {
+    // The app and its tables are two calls: a rejected table leaves a real Base
+    // behind, and the bare API error hides its token — leaving the caller with an
+    // orphan it cannot address. Observed live with an unsupported number formatter.
+    const mock = mockFeishu();
+    mock.route('POST', '/open-apis/auth/v3/tenant_access_token/internal', () => ({ body: { code: 0, tenant_access_token: 't1', expire: 7200 } }));
+    mock.route('POST', '/open-apis/bitable/v1/apps', () => ({ body: { code: 0, data: { app: { app_token: 'basNEW', name: 'dev tasks', url: 'https://x/base/basNEW' } } } }));
+    mock.route('POST', '/open-apis/bitable/v1/apps/basNEW/tables', () => ({ body: { code: 1254001, msg: 'WrongRequestBody' } }));
+    const { config, identity, client } = compose(mock);
+    const definitions = toolsMod.buildTools({ client, identity, config, resolveRedirectUri: () => REDIRECT });
+    const tool = find(definitions, 'feishu_bitable');
+    const error = await rejects(
+      () => tool.execute({ action: 'create_app', name: 'dev tasks', tables: [{ name: 'items', fields: [{ name: 'x', type: 'text' }] }] }, {}),
+      'the Bitable app was created',
+    );
+    assert(String(error.message).includes('basNEW'), 'the message must carry the app token that now exists');
+    assert(String(error.message).includes('create_table'), 'it should say how to finish the job');
+  });
   await test('bitable create_field takes its name from fields when name is omitted', async () => {
     // create_table and create_app both take a fields array, so a caller reasonably
     // describes the field there; demanding a separate flat name was a trap.
