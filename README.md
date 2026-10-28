@@ -321,6 +321,39 @@ The SDK is deliberately not a dependency, so the suite looks for the real
 those two checks when it cannot find it (which is what happens in CI). Point
 `DSH_TOOLS_PATH` at `dsh-tools/lib/index.js` to force a specific copy.
 
+### Live tests against the real Feishu API
+
+`npm test` proves the code is self-consistent. It cannot prove Feishu agrees, so
+`test/live/` drives the same tool definitions against the real open platform.
+
+```bash
+npm run test:live:list      # print the 61 cases; sends no request
+npm run test:live           # run them all, then clean up (about 2 minutes)
+node test/live/feishu-live.mjs --only=doc    # one family: auth api drive doc
+                                             # sheet bitable query dashboard
+                                             # wiki message
+node test/live/feishu-live.mjs --keep        # leave the artifacts in place
+```
+
+It needs a working installation (app id from the profile patch, app secret and
+user grant from the credential store) and it takes its safety rails seriously:
+
+- the credential store is mounted **read-only**, because a refresh rotates a
+  single-use token — a half-written grant would be unrecoverable. The run
+  asserts `grant rotated: false` at the end;
+- `feishu_auth logout` and `complete` are never called;
+- every artifact is named `DSH-TEST-<stamp>` and deleted at the end; sent
+  messages are recalled by the identity that sent them;
+- messages only ever go to the authorizing user's own open_id.
+
+Results are written to `test/live/last-run.json` (gitignored) and summarised in
+`docs/feishu-test-report.md`. Exit code is 0 only when no case failed; a blocked
+case (the app console has not granted a scope) is reported as `blocked`, not
+`fail`, because no code change can clear it. See
+[`docs/feishu-issue-fix-log.md`](docs/feishu-issue-fix-log.md) for the defects
+this harness found.
+
+
 ---
 
 ## Security notes

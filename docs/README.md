@@ -9,6 +9,7 @@
 | [`记忆存档.md`](./记忆存档.md) | DSH 记忆库导出快照（项目 KEY 轨全文 + 相关项目/每日日志摘录 + 灌回新机器的方法），已脱敏 |
 | [`feishu-test-report.md`](./feishu-test-report.md) | **全功能测试报告**：范围/环境/权限、61 条用例矩阵（44 通过 0 失败 7 阻塞 10 跳过）、复现命令、安全护栏、已知风险、变更清单 |
 | [`feishu-issue-fix-log.md`](./feishu-issue-fix-log.md) | **问题排查与修复日志**：ISSUE-01…07，每条含现象/复现/错误码/根因/修复/修改文件/回归/遗留风险 |
+| [`../test/live/README.md`](../test/live/README.md) | **真接口测试运行器**说明：怎么跑、安全护栏（凭据库只读/产物回收/不外发）、判定口径、新增用例写法 |
 | [`workspace-understanding/`](./workspace-understanding/) | 逆向分析产物：资源索引（`00`）、缺口与未决问题（`07`）、增量基线（`index.json`） |
 
 ## 交接包（仓库根目录）

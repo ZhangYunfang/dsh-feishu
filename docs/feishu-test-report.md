@@ -149,12 +149,14 @@ cd /Users/zyf/Project/DSH_WorkSpace/dsh-feishu
 npm test
 
 # 线上全量（真接口；约 2 分钟；自动清理，可加 --keep 保留产物）
-node test/live/feishu-live.mjs
+npm run test:live
+# 等价的直接调用：node test/live/feishu-live.mjs
 
 # 只跑某些领域
 node test/live/feishu-live.mjs --only=drive
 node test/live/feishu-live.mjs --only=doc
-node test/live/feishu-live.mjs --list          # 只列用例，不发任何请求
+npm run test:live:list                          # 只列用例，不发任何请求
+# 等价的直接调用：node test/live/feishu-live.mjs --list
 
 # 查看结果（机读）
 cat test/live/last-run.json | python3 -m json.tool | head -40

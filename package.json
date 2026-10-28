@@ -38,7 +38,9 @@
   "scripts": {
     "test": "node test/run-tests.mjs",
     "install:profile": "pwsh -File scripts/install.ps1",
-    "uninstall:profile": "pwsh -File scripts/uninstall.ps1"
+    "uninstall:profile": "pwsh -File scripts/uninstall.ps1",
+    "test:live": "node test/live/feishu-live.mjs",
+    "test:live:list": "node test/live/feishu-live.mjs --list"
   },
   "engines": {
     "node": ">=20"
