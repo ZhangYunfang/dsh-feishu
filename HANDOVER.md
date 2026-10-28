@@ -41,11 +41,12 @@ curl -s http://localhost:3080/api/feishu/status
 
 | 项 | 实测值 |
 |---|---|
-| 分支 / HEAD | `main @ 41b91fe`（续期缺陷修复提交；最新以 `git log -1` 为准） |
+| 分支 / HEAD | `main @ 39c7396`（含续期修复与真接口测试；最新以 `git log -1` 为准） |
 | 跟踪文件数 | 41 |
 | 未提交改动 | 1 项（`pnpm-lock.yaml`，空 lockfile，故意不提交） |
 | 文档 | `docs/` 下 3 篇 + 本文件 + `HANDOVER-MEMORY.md` |
-| 自测 | `npm test` → `103 passed, 0 failed` |
+| 自测 | `npm test` → `107 passed, 0 failed` |
+| 真接口测试 | `node test/live/feishu-live.mjs` → **44 通过 / 0 失败 / 7 阻塞 / 10 跳过**（61 用例，详见 `docs/feishu-test-report.md`） |
 | 宿主挂载实测 | 真实 `cordis@4.0.2` + 真实 `ToolRuntime`/`SystemPrompt`/`WebServer` → 10 工具 / 6 路由 / 无内部错误 |
 | 线上接口 | `GET /api/feishu/status` → 200；`feishu_drive list_files`（用户身份）返回 38 条 |
 | 设置页可写 | `patch.file = /Users/zyf/.dsh/profiles/web/cordis.patch.yml`（坑 7 已修） |
@@ -113,7 +114,8 @@ curl -s http://localhost:3080/api/feishu/status
 |---|---|
 | **本轮 6 处修复的线上复验** | 自测期间令牌到期、且旧 grant 无 refresh token，`refreshable` 为 `false`——必须先在飞书后台加开 3 个权限并发版、重启 DSH、重新授权，之后才能复验 `download` / 根目录建夹 / 混类型 `get_meta` / `import_file` |
 | `feishu_query` / `feishu_dashboard` / `append_markdown` 的权限是否生效 | 同上，等重新授权 |
-| `feishu_auth refresh` | 需要真凭据下已落盘的 refresh token；当前旧 grant 没有，重新授权后才能跑「连续两次 refresh」这组关键判据 |
+| `feishu_auth refresh` | 已实测：仍 `blocked`（`scope` 无 `offline_access`）⇒ 应用后台未开通/未发版，代码侧已就绪（`41b91fe`） |
+| 7 条权限型阻塞用例 | `docx:document.block:convert` / `base:table:read` / `base:dashboard:read` / `base:dashboard:create` 均未授予，需后台开通并重授权 |
 | 少数 action | `bitable` 的 `update_records`/`delete_records`/`get_record`、`sheet` 的 `add_sheet`、`drive.get_meta` 显式传 `docTypes` 未跑 |
 | 浏览器半边的完整交互 | 悬浮面板与设置页能渲染（`patch.file` 已指向 profile 的 patch 文件），但表单**保存**未实点过 |
 | 换机器重建 | 迁移清单为本机推演，**未在第二台机器实测** |
@@ -219,6 +221,8 @@ curl -s http://localhost:3080/api/feishu/status
 | `docs/README.md` | 文档索引 + 三个核心结论 + 远程约定 |
 | `docs/dsh-feishu-安装与排障全记录.md` | **主排障文档**：安装步骤、6 个坑的完整过程、诊断方法论、配置清单、复发风险与恢复命令、命令速查与源码索引 |
 | `docs/dsh-plugin-contract-0.1.2-alpha.2.md` | DSH 插件包契约调研（逐条 `path:line`） |
+| `docs/feishu-test-report.md` | 全功能测试报告：61 条用例矩阵、权限阻塞总账、复现命令、安全护栏 |
+| `docs/feishu-issue-fix-log.md` | ISSUE-01…07 逐个问题的现象→根因→修复→回归 |
 | `docs/workspace-understanding/` | 逆向分析产物（资源索引、缺口清单） |
 | `HANDOVER-MEMORY.md` | 记忆清单：换机器时要灌进记忆库的短事实 |
 | `.dsh/handover-draft/2026-10-27-facts.md` | 机器采集草稿（本文件数字的来源） |

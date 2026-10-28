@@ -24,6 +24,8 @@
 | 10 | `user`（用户偏好） | 所有结论必须带 `path:line` 或「命令 + 输出」证据；无法验证的标 `UNVERIFIABLE`，禁止猜测。 | 用户明确要求 |
 | 11 | `memory` | 飞书 `refresh_token` **一次性**，且只在 grant 含 `offline_access` 时才随续期响应下发（`refresh_token_expires_in` 同）；响应**没带**新 token 时必须**无条件沿用旧值**，不能按「密钥写在 `config.appSecret` 还是凭据库」分支判断——密钥放凭据库时 `config.appSecret` 恒为空，按它判断必然把旧 token 清空（`lib/identity.js` 旧 `:363`）。判据：`feishu_auth status` 连续两次续期后 `refreshable` 仍为 `true`。失败码：`20037` 过期 / `20064` 已撤销 / `20073` 已用过 / `20074` 后台没开「刷新 user_access_token」开关。飞书硬上限：用户授权满 **365 天**必须重新授权。 | 本机唯一影响日常使用的缺陷，修法反直觉 |
 
+| 12 | `memory` | 飞书侧「授权链接申请的 scope 比实际授予的少」＝**应用后台未开通或未发版**，不是用户拒绝：拿带 `offline_access` 的链接授权后 `feishu_auth status` 的 `scope` 仍无它，即可判定。判据链：`scope` 缺 → 后台「权限管理」开通 → **创建版本并发布** → 重新授权。另：飞书权限报错 `99991679` 的 `detail` 里会明写 `required one of these privileges under the user identity: [xxx]`，**照抄这个 scope 名比自己猜准**。 | 本轮 7 条阻塞用例的唯一根因，且极易误判成代码缺陷 |
+
 ### 已写入状态
 
 | 项 | 状态 |
