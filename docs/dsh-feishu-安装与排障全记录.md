@@ -898,6 +898,7 @@ cd /Users/zyf/Project/DSH_WorkSpace/dsh-feishu && npm test    # → 103 passed, 
 | 文档与交接包 | `e89b80e` / `658b279` | ✅ 已提交并推送 |
 | 全功能自测的 6 处接口修复 | `5ec70f6` | ✅ 已提交并推送 |
 | refresh token 连坐守卫（风险 4） | `41b91fe` | ✅ 已提交并推送 |
+| 设置页锁死与 patch 文件定位（风险 6 / ISSUE-14） | `59b821e` | ✅ 已提交并推送 |
 
 踩坑提醒：坑 3 的修复**必须**留在代码里 —— 丢了它，`feishu_auth status` 会在授权后重新报 `value is not lossless JSON`。改完代码记得跑 `npm test`（期望 `112 passed, 0 failed`）再提交；**改完代码还要重启 dsh-web**，否则线上跑的还是进程内存里的旧逻辑。
 

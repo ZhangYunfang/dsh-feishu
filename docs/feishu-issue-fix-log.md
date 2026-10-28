@@ -250,4 +250,4 @@
 | ISSUE-11 | 工具失败的 hint/错误码被吞 | 已修（需重启生效） | 本次提交 |
 | ISSUE-12 | 运行器消耗了一次性 refresh token | 已修（用例改非破坏性） | `c201591` |
 | ISSUE-13 | `create_app` 建表失败会丢 Base token | 已修 | 本次提交 |
-| ISSUE-14 | 设置页保存后自己覆盖 `patchFilePath`、永久锁死 | 已修（需重启生效） | 本次提交 |
+| ISSUE-14 | 设置页保存后自己覆盖 `patchFilePath`、永久锁死 | 已修（需重启生效） | `59b821e` |
