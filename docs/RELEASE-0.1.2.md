@@ -1,6 +1,6 @@
 # dsh-feishu 0.1.2
 
-> **已发布**：<https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.2> · 附件 `dsh-feishu-0.1.2.tgz`（128920 字节 / 37 个文件，sha256 `38d9da0afcd221ca08288e46d3c8e7422f92e25cc19d583d03e39de8227d03e8`，下载后校验一致）
+> **已发布**：<https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.2> · 附件 `dsh-feishu-0.1.2.tgz`（129106 字节 / 37 个文件，sha256 `b53e9c2c6583320710f8fcf3efb5cb4ce8e66ac5489a23ec428c14b6ff22fcd0`，下载后校验一致）
 
 > 本文件既是发布说明的源，也直接用作 GitHub Release 正文（正文里的链接已写成绝对 URL，点得开）。
 > 上游：`2048lr/dsh-feishu`（0.1.0）· 本分支：`ZhangYunfang/dsh-feishu`（0.1.2）
@@ -65,7 +65,7 @@ feishu_auth refresh ×2（同一进程连跑）     → 两次 refreshable: true
 ## Checksums
 
 ```text
-dsh-feishu-0.1.2.tgz  128920 B · 37 个文件
-sha256  38d9da0afcd221ca08288e46d3c8e7422f92e25cc19d583d03e39de8227d03e8
+dsh-feishu-0.1.2.tgz  129106 B · 37 个文件
+sha256  b53e9c2c6583320710f8fcf3efb5cb4ce8e66ac5489a23ec428c14b6ff22fcd0
 核对：shasum -a 256 dsh-feishu-0.1.2.tgz 一致；tar -tzf … | wc -l → 37；包内无 App Secret（只有 App ID 与占位符）
 ```
