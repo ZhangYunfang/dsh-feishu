@@ -821,11 +821,11 @@ supervisorctl restart dsh-web
 
 `refreshable: true` 表示有 refresh token，插件会自动续期。若哪天又需要手动授权，先查 `feishu_auth status` 的 `refreshable` 是否变回 `false`（那意味着 `offline_access` 掉了）。
 
-### 风险 4 · 自动续期会把 refresh token 丢掉（已定位，**未修**）
+### 风险 4 · 自动续期会把 refresh token 丢掉（已修复 2026-10-28，提交 `41b91fe`）
 
-这是本次实测发现的**真缺陷**，与坑 7 是两条独立的问题。
+这是本次排查里**唯一影响日常使用**的真缺陷，已定位、已修复、已加回归测试。修的过程中还校正了一个此前的错误认识：不是「飞书只是有时不回新 token」，而是**一次性 refresh token 的协议本来就是这么设计的**。
 
-**现象**
+#### 现象（实测快照）
 
 连续两次 `feishu_auth status`：
 
@@ -834,40 +834,88 @@ supervisorctl restart dsh-web
 第二次：expiresAt 1793112494154  refreshable false  scope 不含 offline_access
 ```
 
-`expiresAt` 变了 ⇒ **续期确实跑过一次**；但 `refreshable` 变成 `false` ⇒ 续期后的记录里**没有 refresh token** 了。后果：约 2 小时后必须重新授权。
+`expiresAt` 变了 ⇒ 续期确实跑过一次；`refreshable` 变 `false` ⇒ 续期之后记录里**没有** refresh token 了。后果：约 2 小时后所有用户身份调用一起失败（`the stored Feishu grant has no refresh token`），只能人工重新授权。
 
-**根因**
+#### 根因（两层，只修一层不够）
 
-`lib/identity.js:363`：
+**① 代码层：续期守卫被「密钥存哪儿」连坐**
+
+旧代码（`lib/identity.js` 续期分支）：
 
 ```js
-const record = userRecordFrom(parsed);              // refreshToken 取 parsed.refresh_token，缺失即 ''
+const record = userRecordFrom(parsed);              // refreshToken 缺失即 ''
 record.openId = stored.openId;
 record.name = stored.name;
-if (config.appSecret.length > 0 && (record.refreshToken === undefined || record.refreshToken.length === 0)) {
-  record.refreshToken = stored.refreshToken;        // ← 只有 config.appSecret 非空才沿用旧 token
-}
-await storeUserToken(record);
-```
-
-那个 `config.appSecret.length > 0` 守卫是**连坐错误**：它假设「密钥写在 `config.appSecret` 里」才谈得上续期，但续期实际用的是 `appSecret()`——该方法会依次查凭据库、环境变量、config。本机密钥在**凭据库**，`config.appSecret` 为空 ⇒ 守卫不成立 ⇒ 飞书这次没回 `refresh_token` 时，**旧 token 被覆盖成空串**。
-
-> 也就是说：**越是按推荐做法把密钥放凭据库，越会触发这个 bug。**
-
-**正解（待落地）**
-
-响应未带新 token 时**无条件**沿用旧值，不按密钥来源分支：
-
-```js
-if (record.refreshToken.length === 0) {
-  record.refreshToken = stored.refreshToken;
-  record.refreshExpiresAt = stored.refreshExpiresAt;
+if (config.appSecret.length > 0 && record.refreshToken.length === 0) {
+  record.refreshToken = stored.refreshToken;        // ← 只有 config.appSecret 非空才沿用
 }
 ```
 
-**判据**：对比前后两次 `feishu_auth status` 的 `expiresAt`（变了=续期跑过）与 `refreshable`（`false`=token 丢了）。修好后应长期保持 `refreshable: true`。
+守卫把「密钥写在 `config.appSecret` 里」当成了「这次续期可不可信」的前提。但续期实际用的密钥来自 `appSecret()`：**凭据库 → 环境变量 → config** 依次取。本机（也是本插件的推荐做法）把密钥放在 `~/.dsh/.credentials.yaml`，`config.appSecret` 恒为空 ⇒ 守卫不成立 ⇒ 飞书这一轮没回新 token 时，**旧 token 被覆盖成空串**。
 
-**临时缓解**：发现 `refreshable` 变 `false` 时，重新走一次授权流程即可恢复（`feishu_auth action=authorize_url`）。
+> 要害在于方向是反的：**越按推荐做法把密钥放凭据库，越会触发**。
+
+**② 协议层：refresh token 一次性，而「没给新 token」本身就是一条信号**
+
+对照官方文档 [刷新 user_access_token（v2）](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/authentication-management/access-token/refresh-user-access-token)：
+
+| 事实 | 文档位置 | 对修复的意义 |
+|---|---|---|
+| `refresh_token` / `refresh_token_expires_in` **仅在用户授予 `offline_access` 时返回** | 「字段权限要求」行 | 不回新 token ⇒ 这次 grant 里没有 offline_access，是**可解释状态**，不是随机丢包 |
+| refresh_token **一次性**，续期成功必然下发新 token，旧的立即失效 | 正文「仅能使用一次」+ 错误码 20073 / 20064 | 所以「回了新 token」时必须**立刻落盘**，否则下次必然 20073 |
+| `scope` 每次续期按服务端裁剪重算 | 响应体 `scope` 说明 | 续期后 scope 掉了 offline_access，正是同一事件的另一条证据 |
+
+也就是说：代码层把「这次没给」放大成了「永久失去」，而协议层给出的诊断信号（scope 掉了 offline_access）当时既没被保留、也没被记录。
+
+#### 修复（4 处代码）
+
+| 位置 | 改法 | 为什么 |
+|---|---|---|
+| `lib/identity.js` · `refreshUserToken` | 响应没带 `refresh_token` 时**无条件**沿用旧 token 与 `refreshExpiresAt` | 密钥放哪儿与飞书是否轮换无关 |
+| 同上 | 没带 `scope` 时沿用旧 scope；没带新 token 时 `logger.warn` 并点名 `offline_access` | 字段省略 ≠ 撤销；同时留下可诊断证据 |
+| `lib/identity.js` · `storeUserToken` | 写盘失败重试一次，仍失败则 warn 并保留**内存副本**、不抛错 | 续期成功后新 token 已生效，此时抛错等于让唯一有效凭证无处可去 |
+| `lib/identity.js` · `authPost` | OAuth 失败信封 `{code,error,error_description}` 把数字 `code` 透传进 `FeishuError` | code 才决定处置建议；丢了就只剩一句 `invalid_grant` |
+| `lib/errors.js` | 新增 `20010/20026/20037/20064/20073/20074` 可执行提示 | 过期 / 已用过 / 已撤销 / 后台没开开关，四种原因四种动作 |
+| `lib/tools/auth.js` | `status` 在「已授权但不可续期」时直接给重新授权建议；`userState` 增报 `refreshExpiresAt` / `refreshExpiresInDays` | 把「两小时后突然全崩」变成当下可见的倒计时 |
+
+#### 验证
+
+**离线（已全绿，每次改动都跑）**
+
+```bash
+cd /Users/zyf/Project/DSH_WorkSpace/dsh-feishu && npm test    # → 103 passed, 0 failed
+```
+
+5 条用例专测本缺陷：
+
+| 用例 | 断言 |
+|---|---|
+| `keeps the stored refresh token when a refresh reply omits a new one` | 省略新 token 时旧 token + 有效期仍在，`refreshable` 仍为 `true`，`scope` 不被清空 |
+| `refreshes a near-expiry grant` | 响应**带**新 token 时旧值被替换并落盘 |
+| `keeps a rotated grant usable in memory when the credential write fails` | 只读凭据库下续期不抛错，内存副本还能再续一次 |
+| `surfaces the refresh failure code and its remediation hint` | `20073` 透传、提示含 `authorize_url`、失败的续期不改动已存授权 |
+| `reports the refresh lifetime without inventing one` | 未知有效期时**不出** `refreshExpiresInDays`（否则工具返回不是无损 JSON） |
+
+**线上（真凭据、真接口；前提是 dsh-web 已重启加载新代码）**
+
+```text
+feishu_auth  action=authorize_url   # 旧 grant 的 refresh token 已被旧代码抹掉，必须重新授权一次
+feishu_auth  action=status          # 期望 refreshable: true、scope 含 offline_access，记下 expiresAt
+feishu_auth  action=refresh         # 主动续期一次
+feishu_auth  action=status          # 期望 expiresAt 变大、refreshable 仍 true、refreshExpiresInDays 有值
+feishu_auth  action=refresh         # 关键一步：证明轮换出的新 token 真的落盘了
+feishu_auth  action=status          # 期望 refreshable 仍 true
+feishu_drive action=list_files identity=user      # 用新 token 真取一次数据
+```
+
+判据：**两次续期后 `refreshable` 始终为 `true`**，且用户身份调用成功。修复前，第一次续期后 `refreshable` 就变 `false`，第二次续期直接报 `the stored Feishu grant has no refresh token`。
+
+#### 残留边界（协议限制，不是缺陷）
+
+- **365 天上限**：用户授权满 365 天后飞书强制重新授权（错误码 `20037`）；`refreshExpiresInDays` 就是给这件事的倒计时。
+- **后台开关**：未开「安全设置 → 刷新 user_access_token」会报 `20074`；改后台后**必须发版**才生效。
+- **`offline_access` 必须在授权时请求**：插件默认 scope 已含（`RECOMMENDED_SCOPES` 第一项）；profile 里**不要**手写 `oauthScopes` 把它漏掉。
+- **改代码必须重启 dsh-web**：插件在进程启动时加载，不重启则线上跑的还是内存里的旧逻辑（本机由 supervisor 托管）。
 
 ### 风险 5 · 代码改动的提交状态
 
@@ -875,9 +923,10 @@ if (record.refreshToken.length === 0) {
 |---|---|---|
 | 无损 JSON 净化（坑 3） | `d2767b2` | ✅ 已提交并推送 |
 | 文档与交接包 | `e89b80e` / `658b279` | ✅ 已提交并推送 |
-| refresh token 连坐守卫（风险 4） | — | ❌ **尚未实现** |
+| 全功能自测的 6 处接口修复 | `5ec70f6` | ✅ 已提交并推送 |
+| refresh token 连坐守卫（风险 4） | `41b91fe` | ✅ 已提交并推送 |
 
-踩坑提醒：坑 3 的修复**必须**留在代码里 —— 丢了它，`feishu_auth status` 会在授权后重新报 `value is not lossless JSON`。改完代码记得跑 `npm test`（期望 `96 passed, 0 failed`）再提交。
+踩坑提醒：坑 3 的修复**必须**留在代码里 —— 丢了它，`feishu_auth status` 会在授权后重新报 `value is not lossless JSON`。改完代码记得跑 `npm test`（期望 `103 passed, 0 failed`）再提交；**改完代码还要重启 dsh-web**，否则线上跑的还是进程内存里的旧逻辑。
 
 ---
 
@@ -965,11 +1014,11 @@ content_type: 'markdown'  →  通过校验（转到权限检查）
 
 **修复**（`lib/tools/auth.js`）：把三个 scope 加进 `RECOMMENDED_SCOPES`，这样新装用户的授权链接会自动申请它们；已装用户需要**在飞书后台加开 + 发版 + 重新授权**。
 
-### 7.7 缺陷 6 · 自动续期丢 refresh token（见 §六 风险 4）
+### 7.7 缺陷 6 · 自动续期丢 refresh token（已修，详见 §六 风险 4）
 
 自测期间这个缺陷**真的把整套功能打瘫了**：令牌到期后 `refreshable` 为 `false`，所有工具统一报 `the stored Feishu grant has no refresh token`。
 
-**修复**（`lib/identity.js`）：续期响应未带新 token 时**无条件**沿用旧 token 与 `refreshExpiresAt`，不再按「密钥是否写在 `config.appSecret`」分支。
+**修复**（`41b91fe`）：续期响应未带新 token 时**无条件**沿用旧 token 与 `refreshExpiresAt`（不再按「密钥是否写在 `config.appSecret`」分支），并补齐 scope 沿用、写盘失败不丢轮换、OAuth 错误码透传、六条可执行提示与状态可见性。回归用例 5 条，判据与线上验证步骤见 §六 风险 4。
 
 ### 7.8 缺陷 7 · `import_file` 缺 `extra` 字段
 

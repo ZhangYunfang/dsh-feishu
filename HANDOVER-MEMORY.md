@@ -22,12 +22,13 @@
 | 8 | `memory` | 核验第三方插件与 DSH 是否兼容，**不要读源码猜**：用 `~/.dsh/profiles/node_modules` 里的真实包搭一个 cordis `Context` 实测挂载。要点：真实 `ToolRuntime` 需要先提供 `systemPrompt` 服务且该服务要有 `tools()` 方法；`WebServer` 用 `port: 0` 挂载但会保持事件循环，探针脚本末尾必须 `process.exit(0)`。 | 本项目靠它推翻了「API 不兼容」的假设 |
 | 9 | `user`（用户偏好） | 线上 DSH 检出 `/Users/zyf/Project/deepseek-harness-dsh-v0.1.2-alpha.2/` **只读**；查源码用工作区里的解压副本 `dsh-src/deepseek-harness-dsh-v0.1.2-alpha.2/`。 | 用户明确约束，违反即返工 |
 | 10 | `user`（用户偏好） | 所有结论必须带 `path:line` 或「命令 + 输出」证据；无法验证的标 `UNVERIFIABLE`，禁止猜测。 | 用户明确要求 |
+| 11 | `memory` | 飞书 `refresh_token` **一次性**，且只在 grant 含 `offline_access` 时才随续期响应下发（`refresh_token_expires_in` 同）；响应**没带**新 token 时必须**无条件沿用旧值**，不能按「密钥写在 `config.appSecret` 还是凭据库」分支判断——密钥放凭据库时 `config.appSecret` 恒为空，按它判断必然把旧 token 清空（`lib/identity.js` 旧 `:363`）。判据：`feishu_auth status` 连续两次续期后 `refreshable` 仍为 `true`。失败码：`20037` 过期 / `20064` 已撤销 / `20073` 已用过 / `20074` 后台没开「刷新 user_access_token」开关。飞书硬上限：用户授权满 **365 天**必须重新授权。 | 本机唯一影响日常使用的缺陷，修法反直觉 |
 
 ### 已写入状态
 
 | 项 | 状态 |
 |---|---|
-| 第 1–8 条（`memory` 轨） | **已写入**（本机 `KEY.md` 可见，最近的条目日期为 2026-10-27） |
+| 第 1–8、11 条（`memory` 轨） | 第 1–8 条**已写入**（本机 `KEY.md` 可见，最近的条目日期为 2026-10-27）；第 11 条于 2026-10-28 提交写入 |
 | 第 9–10 条（`user` 轨） | **已写入**（`preferences.md` 可见） |
 | 待确认队列 `~/.dsh/memories/SUGGESTIONS.jsonl` | **0 条**（采集时实测，无未生效的建议） |
 
@@ -37,7 +38,7 @@
 
 ### 2.1 首选：用 `memory` 工具逐条写入
 
-在新机器的 DSH 会话里，对第 1–8 条用 `memory` 工具的 `add` 动作：
+在新机器的 DSH 会话里，对第 1–8、11 条用 `memory` 工具的 `add` 动作：
 
 ```
 memory(action="add", target="memory", content="<第 1 条的短事实>")
@@ -85,8 +86,8 @@ memory(action="list", target="user",   filter="只读")     # 应命中第 9 条
 
 | 项 | 值 |
 |---|---|
-| 编写会话 | `session-b920afcd-0a85-4866-b55a-f129fc90eb43` |
-| 编写日期 | 2026-10-27 |
+| 编写会话 | `session-b920afcd-0a85-4866-b55a-f129fc90eb43`（初版）· `session-0b7d44ac-eb3e-49be-908a-de8e84fc8a5e`（2026-10-28 增补第 11 条） |
+| 编写日期 | 2026-10-27（初版）/ 2026-10-28（第 11 条） |
 | 写了哪几节 | 全部（§1 条目、§2 灌入方法、§3 未做、本溯源表） |
 | 事实来源 | `.dsh/handover-draft/2026-10-27-facts.md`（记忆清单段落）+ 本次会话中已确认写入的记忆条目 |
 | 不含 | 任何凭据值；凭据位置见 `HANDOVER.md` §7A |

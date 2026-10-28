@@ -22,3 +22,6 @@ Thumbs.db
 # Deliberately out of the repo — they are per-machine and per-hour, and the
 # handover package documents their content instead.
 .dsh/
+
+# The package has no dependencies, so a lockfile is a generated empty shell.
+pnpm-lock.yaml

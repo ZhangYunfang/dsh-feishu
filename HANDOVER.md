@@ -11,8 +11,8 @@
 
 不需要读完全文，按这三步就能接手：
 
-1. **看现状**：`cd dsh-feishu && git log --oneline -3` 应为 `e89b80e docs…` / `d2767b2 fix…` / `17ed9c0 feat…`
-2. **跑自测**：`npm test` → 期望末行 `96 passed, 0 failed`
+1. **看现状**：`cd dsh-feishu && git log --oneline -3` 应为 `41b91fe fix…`（续期缺陷）/ `9f5add3 docs…` / `5ec70f6 fix…`
+2. **跑自测**：`npm test` → 期望末行 `103 passed, 0 failed`
 3. **读细节**：排障全过程在 `docs/dsh-feishu-安装与排障全记录.md`（本文件只给状态、入口与迁移）
 
 要判断线上是否健康，一条命令：
@@ -37,21 +37,21 @@ curl -s http://localhost:3080/api/feishu/status
 
 ---
 
-## 2. 当前状态（数字取自 `.dsh/handover-draft/2026-10-27-facts.md` 采集，2026-10-27）
+## 2. 当前状态（数字取自 `.dsh/handover-draft/2026-10-27-facts.md` 采集，2026-10-27；授权一栏更新于 2026-10-28）
 
 | 项 | 实测值 |
 |---|---|
-| 分支 / HEAD | `main @ 658b279`（本文件所在提交；最新以 `git log -1` 为准） |
+| 分支 / HEAD | `main @ 41b91fe`（续期缺陷修复提交；最新以 `git log -1` 为准） |
 | 跟踪文件数 | 41 |
 | 未提交改动 | 1 项（`pnpm-lock.yaml`，空 lockfile，故意不提交） |
 | 文档 | `docs/` 下 3 篇 + 本文件 + `HANDOVER-MEMORY.md` |
-| 自测 | `npm test` → `96 passed, 0 failed` |
+| 自测 | `npm test` → `103 passed, 0 failed` |
 | 宿主挂载实测 | 真实 `cordis@4.0.2` + 真实 `ToolRuntime`/`SystemPrompt`/`WebServer` → 10 工具 / 6 路由 / 无内部错误 |
 | 线上接口 | `GET /api/feishu/status` → 200；`feishu_drive list_files`（用户身份）返回 38 条 |
 | 设置页可写 | `patch.file = /Users/zyf/.dsh/profiles/web/cordis.patch.yml`（坑 7 已修） |
-| 授权续期 | 🔴 令牌已过期且 `refreshable: false`（自动续期丢 token 的缺陷已在代码中修复，但旧 grant 没有 refresh token）——**需重新授权才能继续使用** |
+| 授权续期 | 🟡 **代码已修**（`41b91fe`，见 `docs/dsh-feishu-安装与排障全记录.md` §六 风险 4）；但旧 grant 的 refresh token 已被旧代码抹掉，**仍需重新授权一次**，且新代码要**重启 dsh-web** 才生效 |
 
-**结论**：可用，但续期有已知缺陷。插件与 DSH `0.1.2-alpha.2` **没有 API 不兼容**。
+**结论**：可用；续期缺陷已从代码层根除并加了 5 条回归用例，剩下的是「重启 + 重新授权 + 线上复验三步」，属操作项而非代码项。
 
 ---
 
@@ -100,7 +100,7 @@ curl -s http://localhost:3080/api/feishu/status
 
 | 项 | 说明 | 影响 |
 |---|---|---|
-| **在本机完成重新授权** | 令牌已过期且旧 grant 无 refresh token；需先在飞书后台加开 3 个权限并发版、重启 DSH，再走一次授权 | 🔴 不做则插件全线不可用 |
+| **在本机完成「重启 + 重新授权 + 线上复验」** | 代码已修（`41b91fe`），但**旧 grant 的 refresh token 已被旧代码抹掉**，无法自行续期；且运行中的 dsh-web 仍是旧代码（进程启动于修复之前） | 🔴 三步不做则插件仍不可用：① 重启 dsh-web ② `feishu_auth action=authorize_url` 重新授权 ③ 按 `docs/…全记录.md` §六 风险 4 的「线上验证」跑 refresh ×2 |
 | 重置飞书 App Secret | App Secret 曾以明文出现在排查对话中，已写入会话日志 | 泄密面，建议后台重置后更新两处配置 |
 | 给上游提 issue | `SameSite=Strict` 是通用缺陷（任何第三方 OAuth 回调都会死循环），尚未反馈给 `dsh-web-startup-auth` 作者 | 不修则每个用该插件的机器都要手工打补丁 |
 | 修正 `dsh.client.inject` | 该字段列了 `@deepseek-ai/dsh-client-runtime`，此包在 `0.1.2-alpha.2` **不存在**（最接近的是 `dsh-client-modules`） | **不影响功能**：悬空依赖被 `system.ts` 静默跳过；仅声明与实际不符 |
@@ -113,7 +113,7 @@ curl -s http://localhost:3080/api/feishu/status
 |---|---|
 | **本轮 6 处修复的线上复验** | 自测期间令牌到期、且旧 grant 无 refresh token，`refreshable` 为 `false`——必须先在飞书后台加开 3 个权限并发版、重启 DSH、重新授权，之后才能复验 `download` / 根目录建夹 / 混类型 `get_meta` / `import_file` |
 | `feishu_query` / `feishu_dashboard` / `append_markdown` 的权限是否生效 | 同上，等重新授权 |
-| `feishu_auth refresh` | 必须有 refresh token 才能测，当前 grant 没有 |
+| `feishu_auth refresh` | 需要真凭据下已落盘的 refresh token；当前旧 grant 没有，重新授权后才能跑「连续两次 refresh」这组关键判据 |
 | 少数 action | `bitable` 的 `update_records`/`delete_records`/`get_record`、`sheet` 的 `add_sheet`、`drive.get_meta` 显式传 `docTypes` 未跑 |
 | 浏览器半边的完整交互 | 悬浮面板与设置页能渲染（`patch.file` 已指向 profile 的 patch 文件），但表单**保存**未实点过 |
 | 换机器重建 | 迁移清单为本机推演，**未在第二台机器实测** |
@@ -124,7 +124,7 @@ curl -s http://localhost:3080/api/feishu/status
 
 | 项 | 选项 | 备注 |
 |---|---|---|
-| `pnpm-lock.yaml` 怎么处理 | 删除 / 加进 `.gitignore` / 提交 | 114 字节空 lockfile，本项目无依赖，属生成物 |
+| `pnpm-lock.yaml` 怎么处理 | ~~删除 / 加进 `.gitignore` / 提交~~ → **已裁决：加进 `.gitignore` 且不入库** | 本包无依赖（`importers: .: {}`），114 字节空 lockfile 属生成物；2026-10-28 已落地 |
 | 是否继续增补 workspace 逆向分析产物 | 补全九份 / 保持现状 | 只影响知识基座完整度 |
 
 ---
@@ -133,14 +133,18 @@ curl -s http://localhost:3080/api/feishu/status
 
 顺序本身有理由，不要打乱：
 
-1. **重置飞书 App Secret**（安全债，独立无依赖）
+0. **重启 dsh-web 让续期修复生效**（`41b91fe` 之前启动的进程仍在跑旧逻辑）
+   → `supervisorctl -c /opt/homebrew/etc/supervisord.conf restart dsh-web`；会话已落盘，页面刷新即可回来
+1. **重新授权一次并线上复验续期**（依赖 0：新 scope 列表与修复后的续期逻辑都要在重启后的进程里）
+   → `feishu_auth action=authorize_url` → 打开链接授权 → `status`（期望 `refreshable: true`、`refreshExpiresInDays` 有值）→ `refresh` 连跑两次 → 每次 `status` 都应仍是 `refreshable: true` → `feishu_drive list_files identity=user` 取一次真实数据
+2. **重置飞书 App Secret**（安全债，独立无依赖）
    → 后台重置 → 更新 `~/.dsh/.credentials.yaml` 的 `refs.FEISHU_APP_SECRET` 与 supervisor conf → `supervisorctl restart dsh-web`
-2. **验证 `node_modules` 补丁是否还在**（依赖 1 的重启，顺手做）
+3. **验证 `node_modules` 补丁是否还在**（依赖重启，顺手做）
    → `grep -n "SameSite" ~/.dsh/profiles/web/node_modules/dsh-web-startup-auth/lib/auth.js`，若回到 `Strict` 则按 §6 坑 5 重打
-3. **逐个补验未验证的 7 个工具**（依赖 1 的可用凭据）
+4. **逐个补验未验证的 7 个工具**（依赖 1 的可用凭据）
    → 每个工具跑一个最小 action，把结果贴进本文件「§2 当前状态」
-4. **给上游提 issue**（不依赖其它项，可并行）
-5. **裁决 §4.3 两项**
+5. **给上游提 issue**（不依赖其它项，可并行）
+6. **裁决 §4.3 两项**
 
 ---
 
