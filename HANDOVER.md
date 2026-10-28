@@ -45,7 +45,7 @@ curl -s http://localhost:3080/api/feishu/status
 | 跟踪文件数 | 41 |
 | 未提交改动 | 1 项（`pnpm-lock.yaml`，空 lockfile，故意不提交） |
 | 文档 | `docs/` 下 6 篇（含安装指南/能力目录/发布说明/测试报告/问题日志/契约调研）+ `CHANGELOG.md` + 本文件 + `HANDOVER-MEMORY.md` |
-| 分发状态 | **0.1.1 已可分发**：GitHub public 可 `dsh plugin add github:ZhangYunfang/dsh-feishu`；tarball `dist/dsh-feishu-0.1.1.tgz`（111K / 35 文件 / sha256 `7a2ee81b…50fc2767`）已验证可 `pnpm add` 安装并 load；**未发 npm**（未登录 + 包名属上游）、**未建 GitHub Release**（无 gh） |
+| 分发状态 | **0.1.1 已发布**：GitHub Release <https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.1>（附件 113337 字节，下载校验一致）；三条安装通道实测可用（Release 下载 / `dsh plugin add github:ZhangYunfang/dsh-feishu` / 本地 tarball）；**未发 npm**（未登录 + 包名属上游） |
 | 自测 | `npm test` → `107 passed, 0 failed` |
 | 真接口测试 | `npm run test:live` → **57 通过 / 0 失败 / 1 阻塞 / 4 跳过**（62 用例，详见 `docs/feishu-test-report.md`） |
 | 宿主挂载实测 | 真实 `cordis@4.0.2` + 真实 `ToolRuntime`/`SystemPrompt`/`WebServer` → 10 工具 / 6 路由 / 无内部错误 |

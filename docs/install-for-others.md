@@ -28,9 +28,17 @@ cd "$DSH_HOME/profiles/$PROFILE"
 pnpm add github:ZhangYunfang/dsh-feishu
 ```
 
-### 方式 B：装本地 tarball（适合内网/离线分发）
+### 方式 B：装 tarball（适合内网/离线分发）
 
-把 `dsh-feishu-0.1.1.tgz` 拷到目标机器，然后：
+先从发布页下载（也可以在浏览器里点下载，或转发给别人）：
+
+```bash
+curl -L -o dsh-feishu-0.1.1.tgz \
+  https://github.com/ZhangYunfang/dsh-feishu/releases/download/v0.1.1/dsh-feishu-0.1.1.tgz
+shasum -a 256 dsh-feishu-0.1.1.tgz    # 应为 7a2ee81b…50fc2767
+```
+
+然后把 tarball 拷到目标机器（或直接用下面这条）：
 
 ```bash
 cd "$DSH_HOME/profiles/$PROFILE"
@@ -38,6 +46,7 @@ pnpm add /path/to/dsh-feishu-0.1.1.tgz
 ```
 
 > tarball 用 `npm pack` 生成，只含 `lib/`、`skill/`、`scripts/`、安装指南、能力目录、README、LICENSE、bundle patch —— 不含测试与文档全集。
+> 发布页：<https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.1>
 
 ### 方式 C：源码 `link:`（要改代码才用）
 

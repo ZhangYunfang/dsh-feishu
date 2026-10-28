@@ -1,5 +1,7 @@
 # dsh-feishu 0.1.1
 
+> **已发布**：<https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.1> · 附件 `dsh-feishu-0.1.1.tgz`（113337 字节，sha256 `7a2ee81b…50fc2767`，下载后校验一致）
+
 > 本文件既是发布说明的源，也直接用作 GitHub Release 正文（正文里的链接已写成绝对 URL，点得开）。
 > 上游：`2048lr/dsh-feishu`（0.1.0）· 本分支：`ZhangYunfang/dsh-feishu`（0.1.1）
 > 验证宿主：DeepSeek Harness `0.1.2-alpha.2`，macOS + Node 24
