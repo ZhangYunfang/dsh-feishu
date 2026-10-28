@@ -41,19 +41,19 @@ curl -s http://localhost:3080/api/feishu/status
 
 | 项 | 实测值 |
 |---|---|
-| 分支 / HEAD | `main @ 39c7396`（含续期修复与真接口测试；最新以 `git log -1` 为准） |
-| 跟踪文件数 | 41 |
-| 未提交改动 | 1 项（`pnpm-lock.yaml`，空 lockfile，故意不提交） |
-| 文档 | `docs/` 下 6 篇（含安装指南/能力目录/发布说明/测试报告/问题日志/契约调研）+ `CHANGELOG.md` + 本文件 + `HANDOVER-MEMORY.md` |
-| 分发状态 | **0.1.1 已发布**：GitHub Release <https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.1>（附件 127084 B / 37 文件，下载校验一致）；三条安装通道实测可用（Release 下载 / `dsh plugin add github:ZhangYunfang/dsh-feishu` / 本地 tarball）；**未发 npm**（未登录 + 包名属上游） |
-| 自测 | `npm test` → `107 passed, 0 failed` |
+| 分支 / HEAD | `main @ 812a804`（0.1.2 发布提交；最新以 `git log -1` 为准） |
+| 跟踪文件数 | 56 |
+| 未提交改动 | 0（工作树干净，与 `origin/main` 同步） |
+| 文档 | `docs/` 下 12 篇 markdown（安装指南/能力目录/发布说明 0.1.1 与 0.1.2/测试报告/问题日志/契约调研/记忆存档/文档索引/排障全记录…）+ `CHANGELOG.md` + 本文件 + `HANDOVER-MEMORY.md` |
+| 分发状态 | **0.1.2 已发布**：GitHub Release <https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.2>（附件 129106 B / 37 文件，sha256 `b53e9c2c…6ff22fcd0`，下载校验一致）；上一版 0.1.1 见 <https://github.com/ZhangYunfang/dsh-feishu/releases/tag/v0.1.1>；三条安装通道实测可用（Release 下载 / `dsh plugin add github:ZhangYunfang/dsh-feishu#v0.1.2` / 本地 tarball）；**未发 npm**（未登录 + 包名属上游） |
+| 自测 | `node test/run-tests.mjs` → `112 passed, 0 failed` |
 | 真接口测试 | `npm run test:live` → **57 通过 / 0 失败 / 1 阻塞 / 4 跳过**（62 用例，详见 `docs/feishu-test-report.md`） |
 | 宿主挂载实测 | 真实 `cordis@4.0.2` + 真实 `ToolRuntime`/`SystemPrompt`/`WebServer` → 10 工具 / 6 路由 / 无内部错误 |
 | 线上接口 | `GET /api/feishu/status` → 200；`feishu_drive list_files`（用户身份）返回 38 条 |
-| 设置页可写 | `patch.file = /Users/zyf/.dsh/profiles/web/cordis.patch.yml`（坑 7 已修） |
+| 设置页可写 | ✅ `patch.file = /Users/zyf/.dsh/profiles/web/cordis.patch.yml` · `entryFound: true` · `readable: true` · `error: null`（坑 7 与 ISSUE-14 均已修，随 0.1.2 发版） |
 | 授权续期 | ✅ **已闭环**：应用后台 7 项权限已开通并发版；重新授权后 `refreshable: true`、scope 16 项含 `offline_access`、`refreshExpiresInDays: 7`；连续两次 `feishu_auth refresh` 均成功 |
 
-**结论**：可用；续期缺陷已从代码层根除并加了 5 条回归用例，剩下的是「重启 + 重新授权 + 线上复验三步」，属操作项而非代码项。
+**结论**：可用并已发版（0.1.2）。续期缺陷与设置页锁死缺陷都从代码层根除并加了回归用例；本机唯一未做的一步是重启 `dsh-web` 让 `lib/` 新代码加载（属操作项，不是代码项）。
 
 ---
 
