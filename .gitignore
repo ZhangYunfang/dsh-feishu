@@ -25,3 +25,6 @@ Thumbs.db
 
 # The package has no dependencies, so a lockfile is a generated empty shell.
 pnpm-lock.yaml
+
+# Live run artifacts: evidence for one run, regenerated on demand.
+test/live/last-run.json

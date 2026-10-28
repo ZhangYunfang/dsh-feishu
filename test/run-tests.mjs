@@ -978,6 +978,71 @@ async function main() {
     await tool.execute({ action: 'append_markdown', documentId: 'dox1', markdown: 'hi' }, {});
     equal(convertBody.content_type, 'markdown', 'Feishu answers content_type "md" with a bare field validation error');
   });
+  await test('docx import_file reports the ticket it polled with', async () => {
+    // Without the ticket a caller cannot follow up with list_import_tasks, and the
+    // polled payload is service-shaped: it may carry no ticket at all (seen live).
+    const mock = mockFeishu();
+    mock.route('POST', '/open-apis/auth/v3/tenant_access_token/internal', () => ({ body: { code: 0, tenant_access_token: 't1', expire: 7200 } }));
+    mock.route('POST', '/open-apis/drive/v1/medias/upload_all', () => ({ body: { code: 0, data: { file_token: 'm1' } } }));
+    mock.route('POST', '/open-apis/drive/v1/import_tasks', () => ({ body: { code: 0, data: { ticket: 'tk-1' } } }));
+    mock.route('GET', '/open-apis/drive/v1/import_tasks/tk-1', () => ({ body: { code: 0, data: { result: { job_status: 0, job_error_msg: 'success', token: 'doxNew', url: 'https://x/doxNew' } } } }));
+    const dir = await mkdtemp(join(tmpdir(), 'dsh-feishu-'));
+    const file = join(dir, 'import.md');
+    await writeFile(file, '# import', 'utf8');
+    try {
+      const { config, identity, client } = compose(mock);
+      const definitions = toolsMod.buildTools({ client, identity, config, resolveRedirectUri: () => REDIRECT });
+      const tool = find(definitions, 'feishu_doc');
+      const value = await tool.execute({ action: 'import_file', filePath: file, folderToken: 'fld1' }, {});
+      equal(value.data.ticket, 'tk-1', 'the ticket has to survive into the result');
+      equal(value.data.token, 'doxNew', 'the imported document token comes from the polled payload');
+      assert(String(value.url).includes('doxNew'), 'the document URL should be reported');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+  await test('bitable create_field takes its name from fields when name is omitted', async () => {
+    // create_table and create_app both take a fields array, so a caller reasonably
+    // describes the field there; demanding a separate flat name was a trap.
+    const mock = mockFeishu();
+    mock.route('POST', '/open-apis/auth/v3/tenant_access_token/internal', () => ({ body: { code: 0, tenant_access_token: 't1', expire: 7200 } }));
+    let sent;
+    mock.route('POST', '/open-apis/bitable/v1/apps/bas1/tables/tbl1/fields', (request) => {
+      sent = JSON.parse(String(request.init.body));
+      return { body: { code: 0, data: { field: { field_id: 'fld1', field_name: sent.field_name, type: Number(sent.type) } } } };
+    });
+    const { config, identity, client } = compose(mock);
+    const definitions = toolsMod.buildTools({ client, identity, config, resolveRedirectUri: () => REDIRECT });
+    const tool = find(definitions, 'feishu_bitable');
+    const value = await tool.execute({ action: 'create_field', appToken: 'bas1', tableId: 'tbl1', fields: [{ name: '备注', type: 'text' }] }, {});
+    equal(sent.field_name, '备注', 'the name inside fields[0] should be used');
+    assert(String(value.summary).includes('备注'), 'the summary should name the created field');
+  });
+  await test('drive delete_file accepts a folder token', async () => {
+    // The tool creates folders, so it has to be able to delete them: without
+    // "folder" in the type enum every folder this tool made became permanent.
+    const mock = mockFeishu();
+    mock.route('POST', '/open-apis/auth/v3/tenant_access_token/internal', () => ({ body: { code: 0, tenant_access_token: 't1', expire: 7200 } }));
+    let deletedPath = '';
+    mock.route('DELETE', '/open-apis/drive/v1/files/fld9', (request) => {
+      deletedPath = request.url.pathname + request.url.search;
+      return { body: { code: 0, data: { task_id: 't', type: 'folder' } } };
+    });
+    const { config, identity, client } = compose(mock);
+    const definitions = toolsMod.buildTools({ client, identity, config, resolveRedirectUri: () => REDIRECT });
+    const tool = find(definitions, 'feishu_drive');
+    const value = await tool.execute({ action: 'delete_file', fileToken: 'fld9', docType: 'folder' }, {});
+    assert(String(value.summary).includes('folder'), 'the summary should name the folder type');
+    assert(deletedPath.includes('type=folder'), 'the delete call should ask for type=folder, got ' + deletedPath);
+  });
+  await test('the recommended scopes cover the Base dashboard write path', async () => {
+    // Read alone answers 99991679 on create_dashboard/create_block (verified live),
+    // so a recommended set without the write scope can never work for those actions.
+    const auth = await import('file:///' + join(LIB, 'tools', 'auth.js').replace(/\\/gu, '/'));
+    assert(auth.RECOMMENDED_SCOPES.includes('offline_access'), 'offline_access is what makes the grant refreshable');
+    assert(auth.RECOMMENDED_SCOPES.includes('base:dashboard:read'), 'dashboard reads need this');
+    assert(auth.RECOMMENDED_SCOPES.includes('base:dashboard:create'), 'dashboard writes need this');
+  });
   await test('drive create_folder resolves the root folder when no folderToken is given', async () => {
     const mock = mockFeishu();
     mock.route('POST', '/open-apis/auth/v3/tenant_access_token/internal', () => ({ body: { code: 0, tenant_access_token: 't1', expire: 7200 } }));
